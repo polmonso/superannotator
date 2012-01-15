@@ -42,6 +42,8 @@ private:
 
     void statusBarMsg( const QString &str, int timeout = 1200 );
 
+    void annotateSelectedSupervoxel();
+
 public slots:
     void labelImageWheelEvent(QWheelEvent * e);
     void labelImageMouseMoveEvent(QMouseEvent * e);
@@ -60,6 +62,7 @@ public slots:
     void genSupervoxelClicked();
 
     void actionSaveAnnotTriggered();
+    void actionLoadAnnotTriggered();
 };
 
 #endif // ANNOTATORWND_H

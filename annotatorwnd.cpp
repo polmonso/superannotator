@@ -143,6 +143,7 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     //mVolumeData.load( "/data/phd/synapses/Rat/layer2_3stak_red_reg_z1.5_example_cropped.tif" );
     mVolumeData.load( "/data/phd/synapses/Rat/layer2_3stak_red_reg_z1.5_firstquarter.tif" );
+    //mVolumeData.load( "/data/phd/synapses/Rat/layer2_3stak_red_reg_z1.5.tif" );
     //mVolumeData.save("/tmp/test.tif" );
     //mVolumeData.load("/data/phd/twoexamples/00147.tif");
     qDebug("Volume size: %dx%dx%d\n", mVolumeData.width(), mVolumeData.height(), mVolumeData.depth());
@@ -158,7 +159,6 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     mCurZSlice = 0;
 
-    qDebug("Computing SLIC...");
     ui->spinSVSeed->setValue( 20 );
     ui->spinSVCubeness->setValue( 40 );
 
@@ -169,7 +169,7 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     updateImageSlice();
     ui->labelImg->resize( ui->labelImg->pixmap()->size() );
-    ui->labelImg->setScaledContents(true);
+    ui->labelImg->setScaledContents(false);
 
     // events
     connect(ui->labelImg,SIGNAL(wheelEventSignal(QWheelEvent*)),this,SLOT(labelImageWheelEvent(QWheelEvent*)));
@@ -185,7 +185,9 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     connect( ui->actionZoom_fit, SIGNAL(triggered()), ui->labelImg, SLOT(zoomFit()) );
     connect( ui->actionOverlay_labels, SIGNAL(triggered()), this, SLOT(actionLabelOverlayTriggered()) );
+
     connect( ui->actionSave_annotation, SIGNAL(triggered()), this, SLOT(actionSaveAnnotTriggered()) );
+    connect( ui->actionLoad_annotation, SIGNAL(triggered()), this, SLOT(actionLoadAnnotTriggered()) );
 
     connect(ui->chkLabelOverlay,SIGNAL(stateChanged(int)),this,SLOT(chkLabelOverlayStateChanged(int)));
 
@@ -208,6 +210,9 @@ void AnnotatorWnd::actionSaveAnnotTriggered()
 {
     QString fileName = QFileDialog::getSaveFileName( this, "Save annotation", "", "*.tif" );
 
+    if (fileName.isEmpty())
+        return;
+
     if (!fileName.endsWith(".tif"))
         fileName += ".tif";
 
@@ -218,8 +223,36 @@ void AnnotatorWnd::actionSaveAnnotTriggered()
     if (!mVolumeLabels.save( stdFName ))
         statusBarMsg(QString("Error saving ") + fileName, 0 );
     else
-        statusBarMsg("File saved successfully.");
+        statusBarMsg("Annotation saved successfully.");
 
+}
+
+void AnnotatorWnd::actionLoadAnnotTriggered()
+{
+    QString fileName = QFileDialog::getOpenFileName( this, "Load annotation", "", "*.tif" );
+
+    if (fileName.isEmpty())
+        return;
+
+    qDebug() << fileName;
+
+    std::string stdFName = fileName.toLocal8Bit().constData();
+
+    if (!mVolumeLabels.load( stdFName ))
+        QMessageBox::critical(this, "Cannot open file", QString("%1 could not be read.").arg(fileName));
+
+
+    if ( (mVolumeLabels.width() != mVolumeData.width()) || (mVolumeLabels.height() != mVolumeData.height()) || (mVolumeLabels.depth() != mVolumeData.depth()) )
+    {
+        QMessageBox::critical(this, "Dimensions do not match", "Annotation volume does not match original volume dimensions. Re-setting labels.");
+        mVolumeLabels.reallocSizeLike( mVolumeData );
+        mVolumeLabels.fill(0);
+        updateImageSlice();
+        return;
+    }
+
+    updateImageSlice();
+    statusBarMsg("Annotation loaded successfully.");
 }
 
 void AnnotatorWnd::genSupervoxelClicked()
@@ -227,8 +260,15 @@ void AnnotatorWnd::genSupervoxelClicked()
     //qDebug() << "Pos:  " << ui->labelImg->x() << " " <<  ui->labelImg->y();
     //qDebug() << "Size: " << ui->labelImg->width() << " " <<  ui->labelImg->height();
 
+    // prepare Z range
+    int zMin = mCurZSlice - ui->spinSVZ->value();
+    int zMax = mCurZSlice + ui->spinSVZ->value();
+
+    if (zMin < 0)   zMin = 0;
+    if (zMax >= mVolumeData.depth())    zMax = mVolumeData.depth() - 1;
+
     // selected x,y region + whole z range
-    mSVRegion = Region3D( ui->labelImg->getViewableRect(), 0, mVolumeData.depth() );
+    mSVRegion = Region3D( ui->labelImg->getViewableRect(), zMin, zMax - zMin );
 
     if ( mSVRegion.totalVoxels() > mMaxSVRegionVoxels )
     {
@@ -317,13 +357,6 @@ void AnnotatorWnd::updateImageSlice()
     QImage qimg;
     mVolumeData.QImageSlice( mCurZSlice, qimg );
 
-    std::vector<int> classLabelHue;
-    classLabelHue.push_back( QColor(Qt::blue).hsvHue() );
-    classLabelHue.push_back( QColor(Qt::green).hsvHue() );
-    classLabelHue.push_back( QColor(Qt::red).hsvHue() );
-
-
-
     // check ground truth slice and draw it
     if (mOverlayLabelImage)
     {
@@ -333,7 +366,7 @@ void AnnotatorWnd::updateImageSlice()
         unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
 
         unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
-        int maxLabel = (int) classLabelHue.size();
+        int maxLabel = (int) mLblColorList.hueList.size();
 
         for (unsigned int i=0; i < sz; i++)
         {
@@ -345,8 +378,9 @@ void AnnotatorWnd::updateImageSlice()
                 continue;
             }
 
-            QColor c(pixPtr[i]);
-            c.setHsv( classLabelHue[lblPtr[i]-1], intTransp, pixPtr[i] & 0xFF );
+            int vv = (pixPtr[i] & 0xFF);
+            vv += 100; if (vv > 200) vv = 200;
+            QColor c = QColor::fromHsv( mLblColorList.hueList[lblPtr[i]-1], intTransp, vv );
 
             pixPtr[i] = c.rgb();
         }
@@ -378,28 +412,9 @@ void AnnotatorWnd::updateImageSlice()
     ui->labelImg->setPixmap( QPixmap::fromImage(qimg) );
 }
 
-void AnnotatorWnd::labelImageMouseReleaseEvent(QMouseEvent * e)
+void AnnotatorWnd::annotateSelectedSupervoxel()
 {
-    QPoint pt = ui->labelImg->screenToImage( e->pos() );
-
-    if ( !mSelectedSV.valid )
-        return; // no superpixel valid
-
-    // try to find a pixel of the current supervoxel where the mouse is
-    // otherwise we will not do anything
-    bool found = false;
-    for (int i=0; i < mSelectedSV.pixelList.size(); i++)
-    {
-        if (mSelectedSV.pixelList[i].coords.z != mCurZSlice)
-            continue;
-
-        if ( (mSelectedSV.pixelList[i].coords.x == pt.x()) && (mSelectedSV.pixelList[i].coords.y == pt.y())) {
-            found = true;
-            break;
-        }
-    }
-
-    if (!found)
+    if (!mSelectedSV.valid)
         return;
 
     // then mark it according to the GT
@@ -411,7 +426,53 @@ void AnnotatorWnd::labelImageMouseReleaseEvent(QMouseEvent * e)
     statusBarMsg(QString("%1 pixels labeled with Label %2").arg(mSelectedSV.pixelList.size()).arg(label));
 
     mSelectedSV.valid = false;  //so that the current supervoxel won't be displayed after update
-    updateImageSlice();
+}
+
+void AnnotatorWnd::labelImageMouseReleaseEvent(QMouseEvent * e)
+{
+    QPoint pt = ui->labelImg->screenToImage( e->pos() );
+
+    // select supervoxel for labeling?
+    if ( e->button() == Qt::LeftButton )
+    {
+        if ( !mSelectedSV.valid )
+            return; // no superpixel valid
+
+        // try to find a pixel of the current supervoxel where the mouse is
+        // otherwise we will not do anything
+        bool found = false;
+        for (int i=0; i < mSelectedSV.pixelList.size(); i++)
+        {
+            if (mSelectedSV.pixelList[i].coords.z != mCurZSlice)
+                continue;
+
+            if ( (mSelectedSV.pixelList[i].coords.x == pt.x()) && (mSelectedSV.pixelList[i].coords.y == pt.y())) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+            return;
+
+        annotateSelectedSupervoxel();
+        updateImageSlice();
+    }
+
+    if ( e->button() == Qt::RightButton )  // iterate through possible labels
+    {
+        int incr = 1;
+        if ( e->modifiers() == Qt::ShiftModifier )
+            incr = -1;
+
+        int newLbl = ui->comboLabel->currentIndex() + incr;
+        if ( newLbl < 0 )
+            newLbl = 0;
+        if (newLbl >= ui->comboLabel->count())
+            newLbl = ui->comboLabel->count() - 1;
+
+        ui->comboLabel->setCurrentIndex( newLbl );
+    }
 }
 
 void AnnotatorWnd::labelImageMouseMoveEvent(QMouseEvent * e)
@@ -454,9 +515,32 @@ void AnnotatorWnd::labelImageMouseMoveEvent(QMouseEvent * e)
     // find corresponding pixels and copy them to the local structure
     mSVRegion.croppedToWholePixList( mVolumeData, mSVoxel.voxelToPixel().at(slicIdx), mSelectedSV.pixelList );
 
+    // if restricted pixel values is checked..
+    if ( ui->groupBoxRestrictPixLabels->isChecked() )
+    {
+        // make copy
+        SlicMapType::value_type oldList = mSelectedSV.pixelList;
+
+        mSelectedSV.pixelList.clear();
+
+        for (int i=0; i < (int)oldList.size(); i++)
+        {
+            PixelType val = mVolumeData.data()[ oldList[i].index ];
+
+            if ( (val < ui->spinPixMin->value()) || (val > ui->spinPixMax->value()) )
+                continue;   //ignore
+
+            mSelectedSV.pixelList.push_back( oldList[i] );
+        }
+    }
+
 
     mSelectedSV.svIdx = slicIdx;
     mSelectedSV.valid = true;
+
+    // if mouse is pressed, then automatically annotate it
+    if ( e->buttons() == Qt::LeftButton )
+        annotateSelectedSupervoxel();
 
     updateImageSlice();
 }

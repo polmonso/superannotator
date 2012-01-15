@@ -9,6 +9,7 @@
 #include <QRectF>
 #include <QPointF>
 #include <QSizeF>
+#include <QPixmap>
 
 class QLabelImage : public QLabel
 {
@@ -16,8 +17,10 @@ class QLabelImage : public QLabel
 private:
     double mScaleFactor;
     QScrollArea *mScrollArea;    //pointer to parent?
-
     double  mZoomMax, mZoomMin; // max and min zoom factor
+
+    QPixmap mOriginalPixmap;  // we control scaling ourselves to be able to choose the interpolation method.
+                              // so this is the original pixmap, no scaling
 
 private:
      inline void adjustScrollBar(QScrollBar *scrollBar, double factor)
@@ -26,8 +29,34 @@ private:
                                  + ((factor - 1) * scrollBar->pageStep()/2)));
      }
 
+public slots:
+     // overriden
+     void setPixmap( const QPixmap& p ) {
+         mOriginalPixmap = p;   // will hold an internal copy
+         rescalePixmap();
+     }
+
+private:
+     void rescalePixmap()   // re-scale pixmap according to current size
+     {
+         if ( !mOriginalPixmap.isNull() )
+            QLabel::setPixmap( mOriginalPixmap.scaled( size(), Qt::IgnoreAspectRatio, Qt::FastTransformation ) );
+     }
+
 public:
     explicit QLabelImage(QWidget *parent = 0);
+
+    // override
+    const QPixmap * pixmap() const {
+        return &mOriginalPixmap;
+    }
+
+    // overriden
+    void resize( const QSize &newSize )
+    {
+        QLabel::resize( newSize );
+        rescalePixmap();
+    }
 
     void setZoomLimits( double min, double max) { mZoomMax = max; mZoomMin = min; }
     void setScrollArea( QScrollArea *sa ) { mScrollArea = sa; }
@@ -67,19 +96,17 @@ public:
 
         size.setHeight( viewportSize.height() / mScaleFactor );
 
-        if (size.width() > pixmap()->width())
-            size.setWidth( pixmap()->width() );
+        if (size.width() > mOriginalPixmap.width())
+            size.setWidth( mOriginalPixmap.width() );
 
-        if (size.height() > pixmap()->height())
-            size.setHeight( pixmap()->height() );
+        if (size.height() > mOriginalPixmap.height())
+            size.setHeight( mOriginalPixmap.height() );
 
         return QRect( corner.toPoint(), size.toSize() );
     }
 
     void scaleImage(double factor, bool factorIsRelative = true)
     {
-     Q_ASSERT(pixmap());
-
      qDebug("Scale: %f", (float)factor);
 
      double tempScale = factor;
@@ -93,7 +120,7 @@ public:
 
      mScaleFactor = tempScale;
 
-     resize(mScaleFactor * pixmap()->size());
+     resize(mScaleFactor * mOriginalPixmap.size());
 
      adjustScrollBar(mScrollArea->horizontalScrollBar(), factor);
      adjustScrollBar(mScrollArea->verticalScrollBar(), factor);
@@ -137,13 +164,13 @@ public slots:
     void zoomFit()
     {
         double ratioSA = mScrollArea->maximumViewportSize().width() * 1.0 / mScrollArea->maximumViewportSize().height();
-        double ratioImg = pixmap()->width() * 1.0 / pixmap()->height();
+        double ratioImg = mOriginalPixmap.width() * 1.0 / mOriginalPixmap.height();
 
         mScaleFactor = 1.0; //reset
         if (ratioSA < ratioImg)
-            scaleImage( mScrollArea->maximumViewportSize().width() * 1.0 / pixmap()->width() );
+            scaleImage( mScrollArea->maximumViewportSize().width() * 1.0 / mOriginalPixmap.width() );
         else
-            scaleImage( mScrollArea->maximumViewportSize().height() * 1.0 / pixmap()->height() );
+            scaleImage( mScrollArea->maximumViewportSize().height() * 1.0 / mOriginalPixmap.height() );
     }
 };
 

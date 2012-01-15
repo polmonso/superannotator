@@ -13,6 +13,8 @@ private:    //disable copy operator, at least for now
     Matrix3D( const Matrix3D& rhs );
     Matrix3D& operator=( const Matrix3D& rhs );
 
+    typedef itk::Image<T, 3> ItkImageType;
+
 public:
     typedef T DataType;
     Matrix3D() { mData = 0; mWidth = mHeight = mDepth = 0; updateCache(); mKeepOnDestr = false; }
@@ -28,18 +30,12 @@ public:
                             unsigned int w, unsigned int h, unsigned int d,
                             Matrix3D<T> *dest) const
     {
-        // so far only works for whole z and constrained x y
-        if ( (sZ != 0) || (d != depth()) )
-            qFatal("Matrix3D: Crop only working for sZ = 0 and d = depth()");
-
         dest->realloc( w, h, d );
 
         unsigned int endZ = sZ + d;
         unsigned int endY = sY + h;
         unsigned int stXY = sX;
         unsigned int edXY = stXY + w;
-
-        qDebug("Width: %d", w);
 
         unsigned int szCount = 0;
         for(; sZ < endZ; sZ++ )
@@ -133,32 +129,59 @@ public:
         freeData();
     }
 
+    static bool getFileDimensions( const std::string &fName, unsigned int &w, unsigned int &h, unsigned int &d )
+    {
+        try
+        {
+            typename itk::ImageFileReader<ItkImageType>::Pointer reader = itk::ImageFileReader<ItkImageType>::New();
+            reader->SetFileName( fName );
+            //reader->Update();
+
+            typename ItkImageType::Pointer img = reader->GetOutput();
+
+            typename ItkImageType::SizeType imSize = img->GetLargestPossibleRegion().GetSize();
+
+            w = imSize[0];
+            h = imSize[1];
+            d = imSize[2];
+        }
+        catch(std::exception &e)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
     bool load( const std::string &fName )  // load from file
     {
-        typedef itk::Image<T, 3> ItkImageType;
+        try
+        {
+            typename itk::ImageFileReader<ItkImageType>::Pointer reader = itk::ImageFileReader<ItkImageType>::New();
+            reader->SetFileName( fName );
+            reader->Update();
 
-        mData = 0;    // just in case for now
+            typename ItkImageType::Pointer img = reader->GetOutput();
 
-        typename itk::ImageFileReader<ItkImageType>::Pointer reader = itk::ImageFileReader<ItkImageType>::New();
-        reader->SetFileName( fName );
-        reader->Update();
+            typename ItkImageType::IndexType index;
+            index[0] = index[1] = index[2] = 0;
 
-        typename ItkImageType::Pointer img = reader->GetOutput();
+            mData = &img->GetPixel( index );
 
-        typename ItkImageType::IndexType index;
-        index[0] = index[1] = index[2] = 0;
+            img->Register();    //so it won't delete the data ;)
 
-        mData = &img->GetPixel( index );
+            typename ItkImageType::SizeType imSize = img->GetLargestPossibleRegion().GetSize();
+            mWidth = imSize[0];
+            mHeight = imSize[1];
+            mDepth = imSize[2];
 
-        img->Register();    //so it won't delete the data ;)
-
-        typename ItkImageType::SizeType imSize = img->GetLargestPossibleRegion().GetSize();
-        mWidth = imSize[0];
-        mHeight = imSize[1];
-        mDepth = imSize[2];
-
-        updateCache();
-        mKeepOnDestr = true;
+            updateCache();
+            mKeepOnDestr = true;
+        }
+        catch(std::exception &e)
+        {
+            return false;
+        }
 
         return true;
     }
@@ -167,26 +190,33 @@ public:
     {
         typedef itk::Image<T, 3> ItkImageType;
 
-        typename ItkImageType::Pointer itkImg = ItkImageType::New();
+        try
+        {
+            typename ItkImageType::Pointer itkImg = ItkImageType::New();
 
-        typename ItkImageType::PixelContainer::Pointer pixContainer = ItkImageType::PixelContainer::New();
-        pixContainer->SetImportPointer( mData, mNumElem );
+            typename ItkImageType::PixelContainer::Pointer pixContainer = ItkImageType::PixelContainer::New();
+            pixContainer->SetImportPointer( mData, mNumElem );
 
-        itkImg->SetPixelContainer( pixContainer );
+            itkImg->SetPixelContainer( pixContainer );
 
-        typename ItkImageType::SizeType imSize;
-        imSize[0] = mWidth;
-        imSize[1] = mHeight;
-        imSize[2] = mDepth;
+            typename ItkImageType::SizeType imSize;
+            imSize[0] = mWidth;
+            imSize[1] = mHeight;
+            imSize[2] = mDepth;
 
-        itkImg->SetRegions(imSize);
+            itkImg->SetRegions(imSize);
 
 
-        typename itk::ImageFileWriter<ItkImageType>::Pointer writer = itk::ImageFileWriter<ItkImageType>::New();
-        writer->SetFileName(fName);
-        writer->SetInput(itkImg);
+            typename itk::ImageFileWriter<ItkImageType>::Pointer writer = itk::ImageFileWriter<ItkImageType>::New();
+            writer->SetFileName(fName);
+            writer->SetInput(itkImg);
 
-        writer->Update();
+            writer->Update();
+        }
+        catch( std::exception &e )
+        {
+            return false;
+        }
 
         return true;
     }
