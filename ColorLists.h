@@ -12,7 +12,7 @@ struct LabelColorList
 
     inline LabelColorList()
     {
-        hueList.push_back( QColor(Qt::blue).hsvHue() );
+        hueList.push_back( QColor(Qt::magenta).hsvHue() );
         hueList.push_back( QColor(Qt::green).hsvHue() );
         hueList.push_back( QColor(Qt::red).hsvHue() );
 
