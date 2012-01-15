@@ -6,6 +6,9 @@
 #include <QPoint>
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QRectF>
+#include <QPointF>
+#include <QSizeF>
 
 class QLabelImage : public QLabel
 {
@@ -31,6 +34,46 @@ public:
 
     inline void setImage( const QImage &img ) {
         this->setPixmap( QPixmap::fromImage(img) );
+    }
+
+    // returns 'viewable rect' in image (pixmap) coordinates
+    inline QRect getViewableRect() const
+    {
+        QSizeF viewportSize = QSizeF(mScrollArea->maximumViewportSize());
+
+        //qDebug("Viewport size: %f %f", viewportSize.width(), viewportSize.height());
+
+        QRectF myCoords = QRectF(this->rect());
+        myCoords.setX( this->x() );
+        myCoords.setY( this->y() );
+
+        QPointF corner(0,0);
+        QSizeF  size(0,0);
+
+        //qDebug("Scale: %f", (float)mScaleFactor);
+        //qDebug("x: %f",myCoords.x());
+        //qDebug("y: %f",myCoords.y());
+
+        if (myCoords.x() < 0) {
+            corner.setX( -myCoords.x() / mScaleFactor );
+            size.setWidth( viewportSize.width() / mScaleFactor );
+        }
+
+        size.setWidth( viewportSize.width() / mScaleFactor );
+
+        if (myCoords.y() < 0) {
+            corner.setY( -myCoords.y() / mScaleFactor );
+        }
+
+        size.setHeight( viewportSize.height() / mScaleFactor );
+
+        if (size.width() > pixmap()->width())
+            size.setWidth( pixmap()->width() );
+
+        if (size.height() > pixmap()->height())
+            size.setHeight( pixmap()->height() );
+
+        return QRect( corner.toPoint(), size.toSize() );
     }
 
     void scaleImage(double factor, bool factorIsRelative = true)
@@ -105,4 +148,5 @@ public slots:
 };
 
 #endif // QLABELIMAGE_H
+
 

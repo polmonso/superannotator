@@ -7,8 +7,13 @@
 #undef fatalMsg
 
 #include "Matrix3D.h"
+#ifdef _OPENMP
+    #include <omp.h>
+#endif
+
 /**
  ** Class to ease the task of computing and using supervoxels
+ *  So far only works with T == unsigned char, for compatibility with supervoxel library
  */
 template<typename T>    // T is the input data type
 class SuperVoxeler
@@ -30,31 +35,20 @@ public:
 
     unsigned int numLabels() const { return mNumLabels; }
 
-    void apply( const Matrix3D<T> &img, int step, unsigned int cubeness )
+    // generic, needs no instantiation
+    static void rawGenSupervoxels( const Matrix3D<T> &img, int step, unsigned int cubeness, Matrix3D<IDType> *destination, unsigned int &_numLabels )
     {
         LKM* lkm = new LKM;
 
         sidType**   kLabels;
         int numLabels;
 
-        /** This is a waste of memory, so it should be changed inside the supervoxel routines **/
-        Matrix3D<double> dblMatrix( img.width(), img.height(), img.depth() );
-        for (unsigned int i=0; i < img.numElem(); i++)
-            dblMatrix.data()[i] = img.data()[i];    // stupid copy
+        lkm->DoSupervoxelSegmentationForGrayVolume(img.data(), img.width(), img.height(), img.depth(), kLabels, numLabels, step, cubeness);
 
-
-
-        lkm->DoSupervoxelSegmentationForGrayVolume(dblMatrix.data(), img.width(), img.height(), img.depth(), kLabels, numLabels, step, cubeness);
-
-        qDebug("Num labels: %d", (int)numLabels);
         //qDebug("Num elem: %u", img.numElem());
 
-
-        // we can free the double matrix
-        dblMatrix.freeData();
-
         // now another waste.. copy labels back to a normal array
-        mPixelToVoxel.realloc( img.width(), img.height(), img.depth() );
+        destination->realloc( img.width(), img.height(), img.depth() );
 
         //qDebug("Size: %d %d %d", mPixelToVoxel.width(), mPixelToVoxel.height(), mPixelToVoxel.depth());
 
@@ -64,23 +58,51 @@ public:
         for (unsigned int z=0; z < img.depth(); z++)
         {
             unsigned int zOff = z * sz;
-            memcpy( mPixelToVoxel.data() + zOff, kLabels[z], sz*sizeof(unsigned int) );
+            memcpy( destination->data() + zOff, kLabels[z], sz*sizeof(unsigned int) );
         }
 
         // free kLabels
-        for (int z=0; z < img.depth(); z++)
+        for (unsigned int z=0; z < img.depth(); z++)
             delete[] kLabels[z];
         delete[] kLabels;
 
         delete lkm; // free lkm itself
 
-        mNumLabels = numLabels;
+        _numLabels = numLabels;
+    }
 
+    void apply( const Matrix3D<T> &img, int step, unsigned int cubeness )
+    {
+        rawGenSupervoxels( img, step, cubeness, &mPixelToVoxel, mNumLabels );
+
+        qDebug("Num labels: %d", (int)mNumLabels);
 
         /** Compute the inverse map **/
         qDebug("Computing slic map");
-        createSlicMap( mPixelToVoxel, numLabels, mVoxelToPixel );
+        createSlicMap( mPixelToVoxel, mNumLabels, mVoxelToPixel );
     }
+
+    #ifdef _OPENMP
+    static void rawGenSupervoxelsMultithread( const Matrix3D<T> &img, int step, unsigned int cubeness, Matrix3D<IDType> *destination, unsigned int &_numLabels )
+    {
+        const int numThreads = omp_get_num_threads();
+
+        qDebug("Using %d threads.", numThreads);
+
+        // splitting per dimension
+        const int dimSplit = 4;
+        const int numSubVol = dimSplit*dimSplit*dimSplit;
+        const int dimOverlap = step * 3;
+
+        qDebug("Dividing in %d subvolumes.", numSubVol);
+
+        unsigned int stepX = img.width() / dimSplit;
+        unsigned int stepY = img.height() / dimSplit;
+        unsigned int stepZ = img.depth() / dimSplit;
+
+
+    }
+    #endif
 
 
     const Matrix3D<IDType> & pixelToVoxel() const { return mPixelToVoxel; }

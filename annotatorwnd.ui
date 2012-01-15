@@ -228,7 +228,10 @@
                   <number>1</number>
                  </property>
                  <property name="maximum">
-                  <number>200</number>
+                  <number>900</number>
+                 </property>
+                 <property name="singleStep">
+                  <number>20</number>
                  </property>
                 </widget>
                </item>
@@ -419,7 +422,7 @@
     <string>Zoom fit</string>
    </property>
    <property name="shortcut">
-    <string>Ctrl+F</string>
+    <string>F</string>
    </property>
   </action>
   <action name="actionOverlay_labels">
@@ -433,7 +436,7 @@
     <string>Overlay labels</string>
    </property>
    <property name="shortcut">
-    <string>O</string>
+    <string>Space</string>
    </property>
   </action>
   <action name="actionSave_annotation">

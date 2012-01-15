@@ -15,11 +15,45 @@ private:    //disable copy operator, at least for now
 
 public:
     typedef T DataType;
-    Matrix3D() { mData = 0; mWidth = mHeight = mDepth = 0; updateCache(); }
+    Matrix3D() { mData = 0; mWidth = mHeight = mDepth = 0; updateCache(); mKeepOnDestr = false; }
 
     // empty, just garbage data
     Matrix3D( unsigned int w, unsigned int h, unsigned int d ) {
+        mData = 0; mKeepOnDestr = false;
         realloc(w,h,d);
+    }
+
+    // generates a cropped region in the destination matrix
+    inline void cropRegion( unsigned int sX, unsigned int sY, unsigned int sZ,
+                            unsigned int w, unsigned int h, unsigned int d,
+                            Matrix3D<T> *dest) const
+    {
+        // so far only works for whole z and constrained x y
+        if ( (sZ != 0) || (d != depth()) )
+            qFatal("Matrix3D: Crop only working for sZ = 0 and d = depth()");
+
+        dest->realloc( w, h, d );
+
+        unsigned int endZ = sZ + d;
+        unsigned int endY = sY + h;
+        unsigned int stXY = sX;
+        unsigned int edXY = stXY + w;
+
+        qDebug("Width: %d", w);
+
+        unsigned int szCount = 0;
+        for(; sZ < endZ; sZ++ )
+        {
+            const T * srcZ = sliceData(sZ);
+            unsigned int yCount = 0;
+            for (unsigned int y=sY; y < endY; y++)
+            {
+                std::copy( srcZ + stXY + y*mWidth, srcZ + y*mWidth + edXY, dest->sliceData(szCount) + w*yCount );
+                yCount++;
+            }
+
+            szCount++;
+        }
     }
 
     // empty, just garbage data
@@ -63,12 +97,17 @@ public:
     inline T *data() { return mData; }
     inline const T *data() const { return mData; }
 
+    inline unsigned int coordToIdx( unsigned int x, unsigned int y, unsigned int z ) const
+    {
+        return x + y*mWidth + z*mSz;
+    }
+
     inline T& operator () (unsigned int x, unsigned int y, unsigned int z) {
-        return mData[x + y*mWidth + z*mSz];
+        return mData[coordToIdx(x,y,z)];
     }
 
     inline const T& operator () (unsigned int x, unsigned int y, unsigned int z) const {
-        return mData[x + y*mWidth + z*mSz];
+        return mData[coordToIdx(x,y,z)];
     }
 
     inline bool isEmpty() const { return mData == 0; }
@@ -164,6 +203,17 @@ public:
         return mData + z*mWidth*mHeight;
     }
 
+    inline T *sliceData(unsigned int z)
+    {
+        if (isEmpty())
+            qFatal("Tried to get slice from empty ImageVolume");
+
+        if (z >= mDepth)
+            z = mDepth-1;
+
+        return mData + z*mWidth*mHeight;
+    }
+
     // sliceCoord 0..2
     inline void QImageSlice( unsigned int z, QImage &qimg ) const
     {
@@ -178,6 +228,20 @@ public:
             unsigned int D = p[i];
             dataPtr[i] = D | (D<<8) | (D<<16) | (0xFF<<24);
         }
+    }
+
+    // if all elemenst are equal
+    bool operator ==(const Matrix3D<T>& b) const
+    {
+        for (unsigned int i=0; i < mNumElem; i++)
+        {
+            if ( b.data()[i] != data()[i] ){
+                qDebug(" != at %d", (int)i );
+                return false;
+            }
+        }
+
+        return true;
     }
 
 private:

@@ -27,8 +27,11 @@ private:
     typedef unsigned char PixelType;
     typedef unsigned char LabelType;
 
-    Matrix3D<PixelType>  mVolumeData;    // loaded data (volume)
-    Matrix3D<LabelType>  mVolumeLabels;  // labels for each pixel in the volume
+    Matrix3D<PixelType>  mVolumeData;    // loaded data (volume), whole volume
+    Matrix3D<LabelType>  mVolumeLabels;  // labels for each pixel in original volume
+
+    Matrix3D<PixelType>  mCroppedVolumeData;    // cropped version of data, to keep sizes manageable
+
 
     void updateImageSlice();    //updates the label widget with mCurZSlice slice
 
