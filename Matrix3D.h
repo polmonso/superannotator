@@ -109,6 +109,11 @@ public:
     inline bool isEmpty() const { return mData == 0; }
     inline unsigned int numElem() const { return mNumElem; }
 
+    template<typename T2>
+    inline bool isSizeLike( const Matrix3D<T2> &m ) const {
+        return (m.width()==width()) && (m.height() == height()) && (m.depth() == depth());
+    }
+
     inline void freeData() {
         //qDebug("Free");
         if ((mData != 0) && (mKeepOnDestr == false)) {
@@ -116,6 +121,7 @@ public:
             delete[] mData;
 
             mData = 0;
+            mHeight = mWidth = mDepth = 0;
         }
     }
 

@@ -46,6 +46,8 @@ private:
 public:
     explicit QLabelImage(QWidget *parent = 0);
 
+     double scaleFactor() const { return mScaleFactor; }
+
     // override
     const QPixmap * pixmap() const {
         return &mOriginalPixmap;
@@ -130,8 +132,8 @@ public:
     }
 
     inline QPoint screenToImage( const QPoint &ev ) {
-        int x = (int)(ev.x() / mScaleFactor + 0.5);
-        int y = (int)(ev.y() / mScaleFactor + 0.5);
+        int x = (int)(ev.x() / mScaleFactor - 1 + 0.5);
+        int y = (int)(ev.y() / mScaleFactor - 1 + 0.5);
 
         return QPoint(x,y);
     }

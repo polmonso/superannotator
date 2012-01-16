@@ -18,6 +18,19 @@ public:
     ~AnnotatorWnd();
 
 private:
+    // SETTINGS
+    QString m_sSettingsFile;
+
+    struct {
+        QString savePath;
+        QString loadPath;
+        QString loadPathScores;
+    } mSettingsData;
+
+    void loadSettings();
+    void saveSettings();
+
+private:
     Ui::AnnotatorWnd *ui;
     int mCurZSlice;
 
@@ -31,6 +44,11 @@ private:
     Matrix3D<LabelType>  mVolumeLabels;  // labels for each pixel in original volume
 
     Matrix3D<PixelType>  mCroppedVolumeData;    // cropped version of data, to keep sizes manageable
+
+
+    // score image (if loaded), only for aid in labeling
+    Matrix3D<PixelType> mScoreImage;
+    bool                mScoreImageEnabled;
 
 
     void updateImageSlice();    //updates the label widget with mCurZSlice slice
@@ -63,6 +81,9 @@ public slots:
 
     void actionSaveAnnotTriggered();
     void actionLoadAnnotTriggered();
+
+    void actionLoadScoreImageTriggered();
+    void actionEnableScoreImageTriggered();
 };
 
 #endif // ANNOTATORWND_H

@@ -642,9 +642,18 @@
     <property name="title">
      <string>View</string>
     </property>
+    <widget class="QMenu" name="menuOverlay_score_image">
+     <property name="title">
+      <string>Overlay score image...</string>
+     </property>
+     <addaction name="actionScoreImageLoad"/>
+     <addaction name="actionScoreImageEnabled"/>
+    </widget>
     <addaction name="actionZoom_fit"/>
     <addaction name="separator"/>
     <addaction name="actionOverlay_labels"/>
+    <addaction name="separator"/>
+    <addaction name="menuOverlay_score_image"/>
    </widget>
    <widget class="QMenu" name="menuFile">
     <property name="title">
@@ -703,6 +712,25 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+A, L</string>
+   </property>
+  </action>
+  <action name="actionScoreImageLoad">
+   <property name="text">
+    <string>Load...</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O, L</string>
+   </property>
+  </action>
+  <action name="actionScoreImageEnabled">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Enabled</string>
+   </property>
+   <property name="shortcut">
+    <string>O</string>
    </property>
   </action>
  </widget>

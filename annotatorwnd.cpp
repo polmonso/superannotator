@@ -8,6 +8,7 @@
 #include <QFileDialog>
 #include <QDebug>
 #include <QMessageBox>
+#include <QSettings>
 
 #include "SuperVoxeler.h"
 
@@ -134,6 +135,15 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    // settings
+    m_sSettingsFile = QApplication::applicationDirPath() + "/settings.ini";
+    qDebug() << m_sSettingsFile;
+    loadSettings();
+
+
+
+    mScoreImageEnabled = false;
+
     // this should be configurable
     mMaxSVRegionVoxels = 200U*200U*200U;
 
@@ -189,6 +199,9 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
     connect( ui->actionSave_annotation, SIGNAL(triggered()), this, SLOT(actionSaveAnnotTriggered()) );
     connect( ui->actionLoad_annotation, SIGNAL(triggered()), this, SLOT(actionLoadAnnotTriggered()) );
 
+    connect( ui->actionScoreImageLoad, SIGNAL(triggered()), this, SLOT(actionLoadScoreImageTriggered()) );
+    connect( ui->actionScoreImageEnabled, SIGNAL(triggered()), this, SLOT(actionEnableScoreImageTriggered()) );
+
     connect(ui->chkLabelOverlay,SIGNAL(stateChanged(int)),this,SLOT(chkLabelOverlayStateChanged(int)));
 
     connect(ui->dialLabelOverlayTransp,SIGNAL(valueChanged(int)),this,SLOT(dialOverlayTransparencyMoved(int)));
@@ -204,11 +217,81 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     dialOverlayTransparencyMoved( 0 );
     updateImageSlice();
+
+    this->showMaximized();
+}
+
+
+void AnnotatorWnd::loadSettings()
+{
+    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+
+    mSettingsData.savePath = settings.value("savePath", ".").toString();
+    mSettingsData.loadPath = settings.value("loadPath", ".").toString();
+    mSettingsData.loadPathScores = settings.value("loadPathScores", ".").toString();
+}
+
+void AnnotatorWnd::saveSettings()
+{
+    QSettings settings(m_sSettingsFile, QSettings::NativeFormat);
+    settings.setValue( "savePath", mSettingsData.savePath );
+    settings.setValue( "loadPath", mSettingsData.loadPath );
+    settings.setValue( "loadPathScores", mSettingsData.loadPathScores );
+
+    qDebug() << m_sSettingsFile;
+}
+
+void AnnotatorWnd::actionLoadScoreImageTriggered()
+{
+    QString fileName = QFileDialog::getOpenFileName( this, "Load score image", mSettingsData.loadPathScores, "*.tif" );
+
+    if (fileName.isEmpty())
+        return;
+
+    qDebug() << fileName;
+
+    std::string stdFName = fileName.toLocal8Bit().constData();
+
+    if (!mScoreImage.load( stdFName ))
+        QMessageBox::critical(this, "Cannot open file", QString("%1 could not be read.").arg(fileName));
+
+
+    if ( !mScoreImage.isSizeLike( mVolumeData ) )
+    {
+        QMessageBox::critical(this, "Dimensions do not match", "Score image does not match original volume dimensions. Disabling score visualization.");
+
+        mScoreImageEnabled = false;
+        ui->actionScoreImageEnabled->setChecked(mScoreImageEnabled);
+
+        updateImageSlice();
+        return;
+    }
+
+    // enable and show ;)
+    mScoreImageEnabled = true;
+    ui->actionScoreImageEnabled->setChecked(mScoreImageEnabled);
+
+    updateImageSlice();
+    statusBarMsg("Score image loaded successfully.");
+
+    mSettingsData.loadPathScores = QFileInfo(fileName).absolutePath();
+    this->saveSettings();
+}
+
+void AnnotatorWnd::actionEnableScoreImageTriggered()
+{
+    if ( !mScoreImage.isSizeLike( mVolumeData ) ) {
+        ui->actionScoreImageEnabled->setChecked(false);
+        return;
+    }
+
+    mScoreImageEnabled = ui->actionScoreImageEnabled->isChecked();
+    updateImageSlice();
 }
 
 void AnnotatorWnd::actionSaveAnnotTriggered()
 {
-    QString fileName = QFileDialog::getSaveFileName( this, "Save annotation", "", "*.tif" );
+    QString fileName = QFileDialog::getSaveFileName( this, "Save annotation", mSettingsData.savePath, "*.tif" );
 
     if (fileName.isEmpty())
         return;
@@ -225,11 +308,13 @@ void AnnotatorWnd::actionSaveAnnotTriggered()
     else
         statusBarMsg("Annotation saved successfully.");
 
+    mSettingsData.savePath = QFileInfo(fileName).absolutePath();
+    this->saveSettings();
 }
 
 void AnnotatorWnd::actionLoadAnnotTriggered()
 {
-    QString fileName = QFileDialog::getOpenFileName( this, "Load annotation", "", "*.tif" );
+    QString fileName = QFileDialog::getOpenFileName( this, "Load annotation", mSettingsData.loadPath, "*.tif" );
 
     if (fileName.isEmpty())
         return;
@@ -253,6 +338,9 @@ void AnnotatorWnd::actionLoadAnnotTriggered()
 
     updateImageSlice();
     statusBarMsg("Annotation loaded successfully.");
+
+    mSettingsData.loadPath = QFileInfo(fileName).absolutePath();
+    this->saveSettings();
 }
 
 void AnnotatorWnd::genSupervoxelClicked()
@@ -356,6 +444,54 @@ void AnnotatorWnd::updateImageSlice()
 {
     QImage qimg;
     mVolumeData.QImageSlice( mCurZSlice, qimg );
+
+    // score overlay?
+    if ( mScoreImageEnabled )
+    {
+        // sanity check
+        if ( !mScoreImage.isSizeLike( mVolumeData ) ) {
+            qWarning("mScoreImageEnabled == true but score image is not of valid size");
+        }
+        else
+        {
+            // use as red channel
+            const PixelType *scorePtr = mScoreImage.sliceData( mCurZSlice );
+
+            unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
+
+            unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
+
+            bool first = true;
+            for (unsigned int i=0; i < sz; i++)
+            {
+                float r = (pixPtr[i] >> 16) & 0xFF;
+                float g = (pixPtr[i] >> 8) & 0xFF;
+                float b = (pixPtr[i] >> 0) & 0xFF;
+
+                float sc = scorePtr[i] / 255.0f;
+                float scInv = 1.0f - sc;
+
+                if ( first && (sc > 0.8) )
+                    qDebug("Bef: %f %f %f", r, g ,b);
+
+                g = scInv*g;
+                b = scInv*b;
+                r = r * scInv +  sc*255;
+
+                unsigned int iR = r;
+                unsigned int iG = g;
+                unsigned int iB = b;
+
+                if (first && (sc > 0.8)) {
+                    qDebug("Val: %f %f %f %f", r, g, b, sc);
+                    first = false;
+                }
+
+                //pixPtr[i] = (pixPtr[i] & 0xFF00FFFF) | (((unsigned int) scorePtr[i]) << 16);
+                pixPtr[i] = 0xFF000000 | (iR<<16) | (iG<<8) | iB;
+            }
+        }
+    }
 
     // check ground truth slice and draw it
     if (mOverlayLabelImage)
@@ -589,6 +725,7 @@ void AnnotatorWnd::labelImageWheelEvent(QWheelEvent * e)
                 toZoom = 1/toZoom;
 
             ui->labelImg->scaleImage( toZoom );
+            statusBarMsg( QString().sprintf("Zoom: %.1f", ui->labelImg->scaleFactor()) );
 
             break;
         }
@@ -617,4 +754,5 @@ AnnotatorWnd::~AnnotatorWnd()
 {
     delete ui;
 }
+
 
