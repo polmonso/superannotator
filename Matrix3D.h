@@ -192,7 +192,7 @@ public:
         return true;
     }
 
-    bool save( const std::string &fName )
+    bool save( const std::string &fName ) const
     {
         typedef itk::Image<T, 3> ItkImageType;
 

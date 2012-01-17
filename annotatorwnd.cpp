@@ -10,6 +10,8 @@
 #include <QMessageBox>
 #include <QSettings>
 
+#include "FijiHelper.h"
+
 #include "SuperVoxeler.h"
 
 static SuperVoxeler<unsigned char> mSVoxel;
@@ -23,106 +25,6 @@ struct
     SlicMapType::value_type  pixelList; // pixels that are inside the selected supervoxel
 
 } static mSelectedSV ;
-
-/** Region where supervoxels were computed
-  * This is to avoid computing supervoxels for the whole volume, which could
-  * be infeasible or too expensive
-  */
-struct Region3D
-{
-    bool valid; //if region is valid
-
-    UIntPoint3D corner; // (x,y,z) corner
-    UIntPoint3D size;   // (width,height,depth) from corner
-
-    Region3D() {
-        valid = false;
-    }
-
-    // initialization from two corners
-    Region3D( const UIntPoint3D &c1, const UIntPoint3D &c2 ) {
-        if ( c2.x < c1.x || c2.y < c1.y || c2.z < c1.z ) {
-            qWarning("Region3D constructur: No proper corners given!");
-            valid = false;
-        }
-
-        valid = true;
-        corner = c1;
-        size = UIntPoint3D( c2.x - c1.x + 1, c2.y - c1.y + 1, c2.z - c1.z + 1 );
-    }
-
-    Region3D( const QRect &qrect, unsigned int startZ, unsigned int depth )
-    {
-        valid = true;
-        corner.x = qrect.x();
-        corner.y = qrect.y();
-
-        size.x = qrect.width();
-        size.y = qrect.height();
-
-        corner.z = startZ;
-        size.z = depth;
-
-        valid = true;
-    }
-
-    // use this region to crop a volume
-    template<typename T>
-    void useToCrop( const Matrix3D<T> &whole, Matrix3D<T> *cropped )
-    {
-        if (!valid)
-            qFatal("Tried to crop volume with invalid region");
-
-        whole.cropRegion( corner.x, corner.y, corner.z, size.x, size.y, size.z, cropped );
-    }
-
-    // returns if pt is in the given region and if withoutOffset != 0 => the un-offsetted value of pt
-    bool inRegion( const UIntPoint3D &pt, UIntPoint3D *withoutOffset  )
-    {
-        if ( (pt.x < corner.x) || (pt.y < corner.y) || (pt.z < corner.z) )
-            return false;
-
-        unsigned int ox = pt.x - corner.x;
-        unsigned int oy = pt.y - corner.y;
-        unsigned int oz = pt.z - corner.z;
-
-        if ( (ox >= size.x) || (oy >= size.y) || (oz >= size.z) )
-            return false;
-
-        if ( withoutOffset != 0 ) {
-            withoutOffset->x = ox;
-            withoutOffset->y = oy;
-            withoutOffset->z = oz;
-        }
-
-        return true;
-    }
-
-    // converts pixel list form whole image to the non-offset one (local to the region)
-    // assumes that all the pixels are inside the region, othewise there will be problems with negative values!
-    template<typename T>
-    void croppedToWholePixList( const Matrix3D<T> &wholeVolume, const PixelInfoList &cropped, PixelInfoList &whole)
-    {
-        whole.resize(cropped.size());
-        for (unsigned int i=0; i < whole.size(); i++)
-        {
-            unsigned int dx, dy, dz;
-            whole[i].coords.x = dx = cropped[i].coords.x + corner.x;
-            whole[i].coords.y = dy = cropped[i].coords.y + corner.y;
-            whole[i].coords.z = dz = cropped[i].coords.z + corner.z;
-
-            whole[i].index = wholeVolume.coordToIdx( dx, dy, dz );
-        }
-    }
-
-    inline unsigned int totalVoxels() {
-        if (!valid)
-            return 0;
-
-        return size.x*size.y*size.z;
-    }
-
-};
 
 static Region3D mSVRegion;
 
@@ -140,6 +42,7 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
     qDebug() << m_sSettingsFile;
     loadSettings();
 
+    mFileTypeFilter = "TIF (*.tif *.tiff)";
 
 
     mScoreImageEnabled = false;
@@ -151,8 +54,33 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     ui->centralWidget->setLayout( ui->horizontalLayout );
 
+    // ask user to open raw file
+    {
+        QString fileName = QFileDialog::getOpenFileName( 0, "Load image", mSettingsData.loadPathVolume, mFileTypeFilter );
+
+        if (fileName.isEmpty()) {
+            QTimer::singleShot(1, qApp, SLOT(quit()));
+            return;
+        }
+
+        std::string stdFName = fileName.toLocal8Bit().constData();
+
+        try {
+            mVolumeData.load( stdFName );
+        } catch (std::exception &e)
+        {
+            QMessageBox::critical( this, "Cannot open image file", "Could not open the specified image, quitting.." );
+            QTimer::singleShot(1, qApp, SLOT(quit()));
+            return;
+        }
+
+        mSettingsData.loadPathVolume = QFileInfo( fileName ).absolutePath();
+        this->saveSettings();
+    }
+
+
     //mVolumeData.load( "/data/phd/synapses/Rat/layer2_3stak_red_reg_z1.5_example_cropped.tif" );
-    mVolumeData.load( "/data/phd/synapses/Rat/layer2_3stak_red_reg_z1.5_firstquarter.tif" );
+    //mVolumeData.load( "/data/phd/synapses/Rat/layer2_3stak_red_reg_z1.5_firstquarter.tif" );
     //mVolumeData.load( "/data/phd/synapses/Rat/layer2_3stak_red_reg_z1.5.tif" );
     //mVolumeData.save("/tmp/test.tif" );
     //mVolumeData.load("/data/phd/twoexamples/00147.tif");
@@ -208,6 +136,8 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     connect(ui->butGenSV, SIGNAL(clicked()), this, SLOT(genSupervoxelClicked()));
 
+    connect(ui->butAnnotVis3D, SIGNAL(clicked()), this, SLOT(annotVis3DClicked()));
+
 
     ui->chkLabelOverlay->setChecked(true);
 
@@ -229,6 +159,7 @@ void AnnotatorWnd::loadSettings()
     mSettingsData.savePath = settings.value("savePath", ".").toString();
     mSettingsData.loadPath = settings.value("loadPath", ".").toString();
     mSettingsData.loadPathScores = settings.value("loadPathScores", ".").toString();
+    mSettingsData.loadPathVolume = settings.value("loadPathVolume", ".").toString();
 }
 
 void AnnotatorWnd::saveSettings()
@@ -237,13 +168,14 @@ void AnnotatorWnd::saveSettings()
     settings.setValue( "savePath", mSettingsData.savePath );
     settings.setValue( "loadPath", mSettingsData.loadPath );
     settings.setValue( "loadPathScores", mSettingsData.loadPathScores );
+    settings.setValue( "loadPathVolume", mSettingsData.loadPathVolume );
 
     qDebug() << m_sSettingsFile;
 }
 
 void AnnotatorWnd::actionLoadScoreImageTriggered()
 {
-    QString fileName = QFileDialog::getOpenFileName( this, "Load score image", mSettingsData.loadPathScores, "*.tif" );
+    QString fileName = QFileDialog::getOpenFileName( this, "Load score image", mSettingsData.loadPathScores, mFileTypeFilter );
 
     if (fileName.isEmpty())
         return;
@@ -291,7 +223,7 @@ void AnnotatorWnd::actionEnableScoreImageTriggered()
 
 void AnnotatorWnd::actionSaveAnnotTriggered()
 {
-    QString fileName = QFileDialog::getSaveFileName( this, "Save annotation", mSettingsData.savePath, "*.tif" );
+    QString fileName = QFileDialog::getSaveFileName( this, "Save annotation", mSettingsData.savePath, mFileTypeFilter );
 
     if (fileName.isEmpty())
         return;
@@ -314,7 +246,7 @@ void AnnotatorWnd::actionSaveAnnotTriggered()
 
 void AnnotatorWnd::actionLoadAnnotTriggered()
 {
-    QString fileName = QFileDialog::getOpenFileName( this, "Load annotation", mSettingsData.loadPath, "*.tif" );
+    QString fileName = QFileDialog::getOpenFileName( this, "Load annotation", mSettingsData.loadPath, mFileTypeFilter );
 
     if (fileName.isEmpty())
         return;
@@ -343,6 +275,19 @@ void AnnotatorWnd::actionLoadAnnotTriggered()
     this->saveSettings();
 }
 
+Region3D AnnotatorWnd::getViewportRegion3D()
+{
+    // prepare Z range
+    int zMin = mCurZSlice - ui->spinSVZ->value();
+    int zMax = mCurZSlice + ui->spinSVZ->value();
+
+    if (zMin < 0)   zMin = 0;
+    if (zMax >= mVolumeData.depth())    zMax = mVolumeData.depth() - 1;
+
+    // selected x,y region + whole z range
+    return Region3D( ui->labelImg->getViewableRect(), zMin, zMax - zMin );
+}
+
 void AnnotatorWnd::genSupervoxelClicked()
 {
     //qDebug() << "Pos:  " << ui->labelImg->x() << " " <<  ui->labelImg->y();
@@ -356,7 +301,7 @@ void AnnotatorWnd::genSupervoxelClicked()
     if (zMax >= mVolumeData.depth())    zMax = mVolumeData.depth() - 1;
 
     // selected x,y region + whole z range
-    mSVRegion = Region3D( ui->labelImg->getViewableRect(), zMin, zMax - zMin );
+    mSVRegion = getViewportRegion3D();
 
     if ( mSVRegion.totalVoxels() > mMaxSVRegionVoxels )
     {
@@ -378,6 +323,38 @@ void AnnotatorWnd::genSupervoxelClicked()
     updateImageSlice();
 
     statusBarMsg( QString("Done: %1 supervoxels generated.").arg( mSVoxel.numLabels() ), 0 );
+}
+
+void AnnotatorWnd::annotVis3DClicked()
+{
+    Region3D reg = getViewportRegion3D();
+
+    if ( reg.totalVoxels() > mMaxSVRegionVoxels )
+    {
+        QMessageBox::critical( this, "Region too large", QString("Please choose a smaller volume.") );
+        reg.valid = false;
+        return;
+    }
+
+    if ( reg.valid )
+    {
+        FijiConfig  cfg;
+        cfg.fijiExe = "/data/phd/software/Fiji.app/fiji-linux64";
+
+        Matrix3D<LabelType> lblCropped;
+        reg.useToCrop( mVolumeLabels, &lblCropped );
+
+        // now only keep the label set in the combo box
+        const LabelType lbl = ui->comboLabel->currentIndex();
+
+        unsigned int N = lblCropped.numElem();
+        for (unsigned int i=0; i < N; i++)
+            lblCropped.data()[i] = 255 * (lblCropped.data()[i] == lbl);
+
+        FijiShow3D  s3d;
+        s3d.setConfig(cfg);
+        s3d.run( lblCropped );
+    }
 }
 
 void AnnotatorWnd::statusBarMsg( const QString &str, int timeout )

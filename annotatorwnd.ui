@@ -605,6 +605,13 @@
                </item>
               </widget>
              </item>
+             <item>
+              <widget class="QPushButton" name="butAnnotVis3D">
+               <property name="text">
+                <string>Visualize in 3D</string>
+               </property>
+              </widget>
+             </item>
             </layout>
            </item>
           </layout>

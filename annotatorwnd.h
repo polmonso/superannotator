@@ -5,6 +5,8 @@
 #include "Matrix3D.h"
 #include "ColorLists.h"
 
+#include "Region3D.h"
+
 namespace Ui {
     class AnnotatorWnd;
 }
@@ -23,8 +25,10 @@ private:
 
     struct {
         QString savePath;
-        QString loadPath;
-        QString loadPathScores;
+        QString loadPath;   // these are for annotation
+
+        QString loadPathScores; // for score volume
+        QString loadPathVolume; // for main volume
     } mSettingsData;
 
     void loadSettings();
@@ -34,8 +38,14 @@ private:
     Ui::AnnotatorWnd *ui;
     int mCurZSlice;
 
+    QString mFileTypeFilter;
+
     // colors for labels + icons
     LabelColorList   mLblColorList;
+
+    // returns a region3d object according to current viewport
+    //  and the slice spin box in the form
+    Region3D getViewportRegion3D();
 
     typedef unsigned char PixelType;
     typedef unsigned char LabelType;
@@ -71,6 +81,8 @@ public slots:
 
     void chkLabelOverlayStateChanged(int state);
     void actionLabelOverlayTriggered();
+
+    void annotVis3DClicked();
 
     void dialOverlayTransparencyMoved( int );
 
