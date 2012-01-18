@@ -364,9 +364,9 @@ void AnnotatorWnd::statusBarMsg( const QString &str, int timeout )
 
 void AnnotatorWnd::fillLabelComboBox( int numLabels )
 {
-    if (numLabels > mLblColorList.hueList.size()) {
+    if (numLabels > mLblColorList.colorList.size()) {
         qWarning("fillLabelComboBox: numLabels exceeds hueList size");
-        numLabels = mLblColorList.hueList.size();
+        numLabels = mLblColorList.colorList.size();
     }
 
     ui->comboLabel->clear();
@@ -374,7 +374,7 @@ void AnnotatorWnd::fillLabelComboBox( int numLabels )
     // first none class
     ui->comboLabel->addItem("Unlabeled");
 
-    for (int i=0; i < mLblColorList.hueList.size(); i++)
+    for (int i=0; i < mLblColorList.colorList.size(); i++)
         ui->comboLabel->addItem( mLblColorList.iconList[i], QString("Class %1").arg(i+1) );
 
     ui->comboLabel->setCurrentIndex(1);
@@ -473,13 +473,15 @@ void AnnotatorWnd::updateImageSlice()
     // check ground truth slice and draw it
     if (mOverlayLabelImage)
     {
-        int intTransp = 255*mOverlayLabelImageTransparency;
+        //int intTransp = 255*mOverlayLabelImageTransparency;
+        int floatTransp = 256 * mOverlayLabelImageTransparency;
+        int floatTranspInv = 256 - floatTransp;
 
         const LabelType *lblPtr = mVolumeLabels.sliceData( mCurZSlice );
         unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
 
         unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
-        int maxLabel = (int) mLblColorList.hueList.size();
+        int maxLabel = (int) mLblColorList.colorList.size();
 
         for (unsigned int i=0; i < sz; i++)
         {
@@ -491,9 +493,15 @@ void AnnotatorWnd::updateImageSlice()
                 continue;
             }
 
-            int vv = (pixPtr[i] & 0xFF);
-            vv += 100; if (vv > 200) vv = 200;
-            QColor c = QColor::fromHsv( mLblColorList.hueList[lblPtr[i]-1], intTransp, vv );
+            int vv = (floatTransp * (pixPtr[i] & 0xFF))/256;
+
+            const QColor &color = mLblColorList.colorList[ lblPtr[i] - 1];
+
+            int g = vv + (floatTranspInv * color.green()) / 256;
+            int b = vv + (floatTranspInv * color.blue()) / 256;
+            int r = vv + (floatTranspInv * color.red()) / 256;
+
+            QColor c = QColor::fromRgb( r,g,b );
 
             pixPtr[i] = c.rgb();
         }

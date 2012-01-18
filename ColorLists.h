@@ -7,21 +7,22 @@
 
 struct LabelColorList
 {
-    std::vector<int> hueList;
+    std::vector<QColor> colorList;
+
     std::vector<QIcon> iconList;
 
     inline LabelColorList()
     {
-        hueList.push_back( QColor(Qt::magenta).hsvHue() );
-        hueList.push_back( QColor(Qt::green).hsvHue() );
-        hueList.push_back( QColor(Qt::red).hsvHue() );
+        colorList.push_back( QColor(Qt::magenta) );
+        colorList.push_back( QColor(Qt::green) );
+        colorList.push_back( QColor(Qt::red) );
 
         // create icons
         const int iconSize = 32;
-        for (int i=0; i < (int)hueList.size(); i++ )
+        for (int i=0; i < (int)colorList.size(); i++ )
         {
             QPixmap icon( iconSize, iconSize );
-            icon.fill( QColor::fromHsv( hueList[i], 255, 255 ) );
+            icon.fill( colorList[i] );
 
             iconList.push_back( icon );
         }
