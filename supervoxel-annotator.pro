@@ -12,7 +12,8 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         annotatorwnd.cpp \
-    qlabelimage.cpp
+    qlabelimage.cpp \
+    textinfodialog.cpp
 
 HEADERS  += annotatorwnd.h \
     qlabelimage.h \
@@ -20,9 +21,12 @@ HEADERS  += annotatorwnd.h \
     Matrix3D.h \
     ColorLists.h \
     FijiHelper.h \
-    Region3D.h
+    Region3D.h \
+    ShapeStatistics.h \
+    textinfodialog.h
 
-FORMS    += annotatorwnd.ui
+FORMS    += annotatorwnd.ui \
+    textinfodialog.ui
 
 QMAKE_CXXFLAGS += -fopenmp
 QMAKE_LFLAGS += -fopenmp
@@ -73,6 +77,10 @@ INCLUDEPATH += $$ITKPATH/
 
 LIBS += -L$$ITKPATH/bin -lITKIO -lITKStatistics -lITKNrrdIO -litkgdcm -litkjpeg12 -litkjpeg16 -litkopenjpeg -litkpng -litktiff -litkjpeg8 -lITKSpatialObject -lITKMetaIO -lITKDICOMParser -lITKEXPAT -lITKniftiio -lITKznz -litkzlib -lITKCommon -litksys -litkvnl_inst -litkvnl_algo -litkvnl -litkvcl -litkv3p_lsqr -lpthread -lm -ldl -litkNetlibSlatec -litkv3p_netlib
 LIBS += -luuid
+
+
+
+
 
 
 

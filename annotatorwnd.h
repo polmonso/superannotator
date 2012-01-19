@@ -72,7 +72,14 @@ private:
 
     void annotateSelectedSupervoxel();
 
+
+    void runConnectivityCheck( const Region3D &reg );
+
 public slots:
+    // called whenever the user has modified a single label supervoxel
+    void userModifiedSupervoxelLabel();
+    void butRunConnectivityCheckNowClicked();
+
     void labelImageWheelEvent(QWheelEvent * e);
     void labelImageMouseMoveEvent(QMouseEvent * e);
     void labelImageMouseReleaseEvent(QMouseEvent * e);

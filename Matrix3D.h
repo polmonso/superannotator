@@ -5,6 +5,13 @@
 #include <itkImageFileReader.h>
 #include <itkImageFileWriter.h>
 
+// these are used to detect connected components
+#include <itkBinaryThresholdImageFilter.h>
+#include <itkConnectedComponentImageFilter.h>
+#include <itkBinaryImageToLabelMapFilter.h>
+#include <itkLabelImageToShapeLabelMapFilter.h>
+#include "ShapeStatistics.h"
+#include <vector>
 
 template<typename T>
 class Matrix3D
@@ -23,6 +30,85 @@ public:
     Matrix3D( unsigned int w, unsigned int h, unsigned int d ) {
         mData = 0; mKeepOnDestr = false;
         realloc(w,h,d);
+    }
+
+    // creates a binary image based on thresholding btw [thrMin, thrMax]
+    // and creates a connected component map
+    template<typename T2>
+    void createLabelMap( T thrMin, T thrMax, Matrix3D<T2> *labelImg = 0, bool bFullyConnected = true, T2 *labelCount = 0, std::vector<QString> *shapeDescr = 0 )
+    {
+        typedef itk::Image<T2, 3> LabelImageType;
+        typedef itk::BinaryThresholdImageFilter < ItkImageType, ItkImageType> BinaryThresholdImageFilterType;
+        typedef itk::ConnectedComponentImageFilter< ItkImageType, LabelImageType >	 ConnectedCompFilterType;
+
+        typename BinaryThresholdImageFilterType::Pointer thresholdFilter
+                = BinaryThresholdImageFilterType::New();
+        thresholdFilter->SetInput( asItkImage() );
+        thresholdFilter->SetLowerThreshold(thrMin);
+        thresholdFilter->SetUpperThreshold(thrMax);
+        thresholdFilter->SetInsideValue(255);
+        thresholdFilter->SetOutsideValue(0);
+
+        typename ItkImageType::Pointer thrImage = thresholdFilter->GetOutput();
+
+        // label connected components
+        typename ConnectedCompFilterType::Pointer CCFilter = ConnectedCompFilterType::New();
+        CCFilter->SetInput( thrImage );
+        CCFilter->SetFullyConnected( bFullyConnected );
+
+        CCFilter->Update();
+
+        // get output
+        typename LabelImageType::Pointer resImg = CCFilter->GetOutput();
+
+
+        // now copy----
+        if (labelImg)
+        {
+            // allocate labelImg
+            labelImg->reallocSizeLike( *this );
+
+            const T2 * srcPtr = Matrix3D<T2>::getItkImageDataPtr( resImg );
+            for (unsigned int i=0; i < labelImg->numElem(); i++)
+                labelImg->data()[i] = srcPtr[i];
+        }
+
+        if (labelCount != 0)
+            *labelCount = CCFilter->GetObjectCount();
+
+        if ( shapeDescr )
+        {
+            // then compute descriptions for each object
+            typedef typename itk::LabelImageToShapeLabelMapFilter< LabelImageType >			 LabelToShapeMapFilter;
+
+            // now get shape characteristics
+            typename LabelToShapeMapFilter::Pointer shapeLabelMapFilter = LabelToShapeMapFilter::New();
+
+            //shapeLabelMapFilter->SetBackgroundValue(0);
+            shapeLabelMapFilter->SetInput( resImg );
+            //shapeLabelMapFilter->SetInput2( reader->GetOutput() );
+
+            // this is 'expensive' but may help, otherwise most features outputted will be blank
+            shapeLabelMapFilter->SetComputeFeretDiameter(true);
+            shapeLabelMapFilter->SetComputePerimeter(true);
+
+            shapeLabelMapFilter->Update();
+
+
+            shapeDescr->clear();
+
+            // Loop over all of the blobs
+            for(unsigned int i = 1; i <= shapeLabelMapFilter->GetOutput()->GetNumberOfLabelObjects(); i++)
+            {
+                    typename LabelToShapeMapFilter::OutputImageType::LabelObjectType* labelObject = shapeLabelMapFilter->GetOutput()->GetLabelObject(i);
+
+                    // Output the bounding box (an example of one possible property) of the ith region
+                    //std::cout << "Object " << i << " has bounding box " << labelObject->GetBoundingBox() << std::endl;
+
+                    //writeShapeInfoTxt( stdout, i, labelObject );
+                    shapeDescr->push_back( ShapeStatistics<typename LabelToShapeMapFilter::OutputImageType::LabelObjectType>( labelObject ).toString() );
+            }
+        }
     }
 
     // generates a cropped region in the destination matrix
@@ -192,14 +278,48 @@ public:
         return true;
     }
 
+    // get raw pointer from itkImage
+    static const T* getItkImageDataPtr( typename ItkImageType::Pointer ptr  )
+    {
+        typename ItkImageType::IndexType index;
+        index[0] = index[1] = index[2] = 0;
+
+        return &ptr->GetPixel(index);
+    }
+
+private:
+
+    // creates an ItkImage pointer to represent the data in this volume
+    typename ItkImageType::Pointer asItkImage() const
+    {
+        typename ItkImageType::Pointer itkImg = ItkImageType::New();
+
+        typename ItkImageType::PixelContainer::Pointer pixContainer = ItkImageType::PixelContainer::New();
+        pixContainer->SetImportPointer( mData, mNumElem );
+
+        itkImg->SetPixelContainer( pixContainer );
+
+        typename ItkImageType::SizeType imSize;
+        imSize[0] = mWidth;
+        imSize[1] = mHeight;
+        imSize[2] = mDepth;
+
+        itkImg->SetRegions(imSize);
+
+        return itkImg;
+    }
+
+
+public:
     bool save( const std::string &fName ) const
     {
         typedef itk::Image<T, 3> ItkImageType;
 
         try
         {
-            typename ItkImageType::Pointer itkImg = ItkImageType::New();
+            typename ItkImageType::Pointer itkImg = asItkImage();
 
+#if 0
             typename ItkImageType::PixelContainer::Pointer pixContainer = ItkImageType::PixelContainer::New();
             pixContainer->SetImportPointer( mData, mNumElem );
 
@@ -211,7 +331,7 @@ public:
             imSize[2] = mDepth;
 
             itkImg->SetRegions(imSize);
-
+#endif
 
             typename itk::ImageFileWriter<ItkImageType>::Pointer writer = itk::ImageFileWriter<ItkImageType>::New();
             writer->SetFileName(fName);

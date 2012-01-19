@@ -48,7 +48,7 @@ struct Region3D
 
     // use this region to crop a volume
     template<typename T>
-    void useToCrop( const Matrix3D<T> &whole, Matrix3D<T> *cropped )
+    void useToCrop( const Matrix3D<T> &whole, Matrix3D<T> *cropped ) const
     {
         if (!valid)
             qFatal("Tried to crop volume with invalid region");

@@ -9,6 +9,7 @@
 #include <QDebug>
 #include <QMessageBox>
 #include <QSettings>
+#include "textinfodialog.h"
 
 #include "FijiHelper.h"
 
@@ -135,6 +136,8 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
     connect(ui->dialLabelOverlayTransp,SIGNAL(valueChanged(int)),this,SLOT(dialOverlayTransparencyMoved(int)));
 
     connect(ui->butGenSV, SIGNAL(clicked()), this, SLOT(genSupervoxelClicked()));
+
+    connect( ui->butConnectivityRun, SIGNAL(clicked()), this, SLOT(butRunConnectivityCheckNowClicked()) );
 
     connect(ui->butAnnotVis3D, SIGNAL(clicked()), this, SLOT(annotVis3DClicked()));
 
@@ -325,6 +328,67 @@ void AnnotatorWnd::genSupervoxelClicked()
     statusBarMsg( QString("Done: %1 supervoxels generated.").arg( mSVoxel.numLabels() ), 0 );
 }
 
+void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )
+{
+    const bool showInfo = ui->chkShowRegionInfo->isChecked();
+
+    if ( reg.valid )
+    {
+        Matrix3D<LabelType> lblCropped;
+        reg.useToCrop( mVolumeLabels, &lblCropped );
+
+        // now only keep the label set in the combo box
+        const LabelType lbl = ui->comboLabel->currentIndex();
+
+        unsigned int lblCount;
+        std::vector<QString>  shapeInfoStr;
+        lblCropped.createLabelMap( lbl, lbl, (Matrix3D<unsigned int> *)0, ui->chkConnectivityfull->isChecked(), &lblCount, showInfo?(&shapeInfoStr):0 );
+
+        if (showInfo)
+        {
+            QString info;
+
+            info += "<html><head>";
+            info += "<style type=\"text/css\">";
+            info += "table { margin: 1em; border-collapse: collapse; }";
+            info += "td, th { padding: .3em; border: 1px #ccc solid; }";
+            info += "thead { background: #fc9; }";
+            info += "</style>";
+            info += "</head>";
+
+            for (int i=0; i < (int)shapeInfoStr.size(); i++ )
+            {
+                info += QString("<b>Object %1</b>").arg(i+1);
+                info += shapeInfoStr[i] + "<br><br>";
+            }
+
+            TextInfoDialog  infoDialog(this);
+            infoDialog.setText(info);
+
+            infoDialog.exec();
+        }
+
+        // add to current message
+        QString curMsg = this->statusBar()->currentMessage();
+        if (!curMsg.isEmpty())
+            curMsg += " | ";
+
+        statusBarMsg( curMsg + QString("Region count: %1").arg(lblCount), 2000 );
+    }
+}
+
+void AnnotatorWnd::butRunConnectivityCheckNowClicked()
+{
+    Region3D reg = getViewportRegion3D();
+    runConnectivityCheck( reg );
+}
+
+void AnnotatorWnd::userModifiedSupervoxelLabel()
+{
+    if ( ui->chkConnectivityEnableOnline->isChecked() )
+        butRunConnectivityCheckNowClicked();
+}
+
 void AnnotatorWnd::annotVis3DClicked()
 {
     Region3D reg = getViewportRegion3D();
@@ -350,6 +414,7 @@ void AnnotatorWnd::annotVis3DClicked()
         unsigned int N = lblCropped.numElem();
         for (unsigned int i=0; i < N; i++)
             lblCropped.data()[i] = 255 * (lblCropped.data()[i] == lbl);
+
 
         FijiShow3D  s3d;
         s3d.setConfig(cfg);
@@ -547,6 +612,9 @@ void AnnotatorWnd::annotateSelectedSupervoxel()
     statusBarMsg(QString("%1 pixels labeled with Label %2").arg(mSelectedSV.pixelList.size()).arg(label));
 
     mSelectedSV.valid = false;  //so that the current supervoxel won't be displayed after update
+
+    // callback
+    userModifiedSupervoxelLabel();
 }
 
 void AnnotatorWnd::labelImageMouseReleaseEvent(QMouseEvent * e)
@@ -639,6 +707,8 @@ void AnnotatorWnd::labelImageMouseMoveEvent(QMouseEvent * e)
     // if restricted pixel values is checked..
     if ( ui->groupBoxRestrictPixLabels->isChecked() )
     {
+        unsigned char thrMin = ui->spinPixMin->value();
+        unsigned char thrMax = ui->spinPixMax->value();
         // make copy
         SlicMapType::value_type oldList = mSelectedSV.pixelList;
 
@@ -648,7 +718,28 @@ void AnnotatorWnd::labelImageMouseMoveEvent(QMouseEvent * e)
         {
             PixelType val = mVolumeData.data()[ oldList[i].index ];
 
-            if ( (val < ui->spinPixMin->value()) || (val > ui->spinPixMax->value()) )
+            if ( (val < thrMin) || (val > thrMax) )
+                continue;   //ignore
+
+            mSelectedSV.pixelList.push_back( oldList[i] );
+        }
+    }
+
+    // if score image present + score thresholding selected
+    if ( ui->chkScoreEnable->isChecked() && mScoreImage.isSizeLike(mVolumeData) )
+    {
+        // make copy
+        SlicMapType::value_type oldList = mSelectedSV.pixelList;
+
+        mSelectedSV.pixelList.clear();
+
+        unsigned char thrVal = ui->spinScoreThreshold->value();
+
+        for (int i=0; i < (int)oldList.size(); i++)
+        {
+            PixelType val = mScoreImage.data()[ oldList[i].index ];
+
+            if ( val < thrVal )
                 continue;   //ignore
 
             mSelectedSV.pixelList.push_back( oldList[i] );
