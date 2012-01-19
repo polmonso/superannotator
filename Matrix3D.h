@@ -138,6 +138,15 @@ public:
         }
     }
 
+    // returns an idx list of the pixels with the given value
+    void findPixelWithvalue( T val, std::vector<unsigned int> &idx )
+    {
+        idx.clear();
+        for (unsigned int i=0; i < numElem(); i++)
+            if ( data()[i] == val )
+                idx.push_back( i );
+    }
+
     // empty, just garbage data
     inline void realloc( unsigned int w, unsigned int h, unsigned int d ) {
         freeData();
@@ -182,6 +191,16 @@ public:
     inline unsigned int coordToIdx( unsigned int x, unsigned int y, unsigned int z ) const
     {
         return x + y*mWidth + z*mSz;
+    }
+
+    // converts idx to (x,y,z)
+    inline void idxToCoord( unsigned int idx, unsigned int &x, unsigned int &y, unsigned int &z ) const
+    {
+        unsigned int modA = idx % mSz;
+
+        x = modA % mWidth;
+        y = (( idx - x ) % mSz) / mWidth;
+        z = (idx - x - y*mWidth) / mSz;
     }
 
     inline T& operator () (unsigned int x, unsigned int y, unsigned int z) {

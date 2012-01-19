@@ -103,6 +103,9 @@ public slots:
 
     void actionLoadScoreImageTriggered();
     void actionEnableScoreImageTriggered();
+
+    // called when the region changes in the region info window
+    void regionListFrameIndexChanged(int);
 };
 
 #endif // ANNOTATORWND_H

@@ -14,6 +14,7 @@
 #include "FijiHelper.h"
 
 #include "SuperVoxeler.h"
+#include "regionlistframe.h"
 
 static SuperVoxeler<unsigned char> mSVoxel;
 
@@ -29,6 +30,19 @@ struct
 
 static Region3D mSVRegion;
 
+// this holds a pointer to the regionListFrame window (if there is one)
+// and other info
+struct
+{
+    RegionListFrame             *pFrame;
+    Matrix3D<unsigned int>      lblMatrix;
+    unsigned int                lblCount;
+    std::vector<QString>        shapeDescr;
+    Region3D                    region3D;  // region used at computation time, to convert back to whole image coordinate sytem
+
+} static mLabelListData;
+
+
 // maximum size for SV region in voxels, to avoid memory problems
 static unsigned int mMaxSVRegionVoxels;
 
@@ -37,6 +51,8 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
     ui(new Ui::AnnotatorWnd)
 {
     ui->setupUi(this);
+
+    mLabelListData.pFrame = 0;
 
     // settings
     m_sSettingsFile = QApplication::applicationDirPath() + "/settings.ini";
@@ -197,6 +213,8 @@ void AnnotatorWnd::actionLoadScoreImageTriggered()
 
         mScoreImageEnabled = false;
         ui->actionScoreImageEnabled->setChecked(mScoreImageEnabled);
+        ui->chkConnectivityScoreImg->setEnabled(mScoreImageEnabled);
+        ui->chkScoreEnable->setEnabled(mScoreImageEnabled);
 
         updateImageSlice();
         return;
@@ -205,6 +223,8 @@ void AnnotatorWnd::actionLoadScoreImageTriggered()
     // enable and show ;)
     mScoreImageEnabled = true;
     ui->actionScoreImageEnabled->setChecked(mScoreImageEnabled);
+    ui->chkConnectivityScoreImg->setEnabled(mScoreImageEnabled);
+    ui->chkScoreEnable->setEnabled(mScoreImageEnabled);
 
     updateImageSlice();
     statusBarMsg("Score image loaded successfully.");
@@ -334,38 +354,56 @@ void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )
 
     if ( reg.valid )
     {
-        Matrix3D<LabelType> lblCropped;
-        reg.useToCrop( mVolumeLabels, &lblCropped );
+        Matrix3D<LabelType> croppedImg;
+        if ( !ui->chkConnectivityScoreImg->isChecked() )    // score image or label image?
+            reg.useToCrop( mVolumeLabels, &croppedImg );
+        else
+            reg.useToCrop( mScoreImage, &croppedImg );
 
-        // now only keep the label set in the combo box
+        // now only keep the label set in the combo box in the case of label image
         const LabelType lbl = ui->comboLabel->currentIndex();
 
         unsigned int lblCount;
-        std::vector<QString>  shapeInfoStr;
-        lblCropped.createLabelMap( lbl, lbl, (Matrix3D<unsigned int> *)0, ui->chkConnectivityfull->isChecked(), &lblCount, showInfo?(&shapeInfoStr):0 );
+
+        // score image or label image?
+        PixelType minThr = lbl; PixelType maxThr = lbl;
+        if ( ui->chkConnectivityScoreImg ) {
+            minThr = ui->spinScoreThreshold->value();
+            maxThr = 255;
+        }
+        croppedImg.createLabelMap( minThr, maxThr,
+                                   &mLabelListData.lblMatrix, ui->chkConnectivityfull->isChecked(), &lblCount, showInfo?(&mLabelListData.shapeDescr):0 );
+
+        mLabelListData.lblCount = lblCount;
+
+        // save the region for which this was computed for offset computation later on
+        mLabelListData.region3D = reg;
 
         if (showInfo)
         {
-            QString info;
+            if (mLabelListData.pFrame != 0)
+                delete mLabelListData.pFrame;
 
-            info += "<html><head>";
-            info += "<style type=\"text/css\">";
-            info += "table { margin: 1em; border-collapse: collapse; }";
-            info += "td, th { padding: .3em; border: 1px #ccc solid; }";
-            info += "thead { background: #fc9; }";
-            info += "</style>";
-            info += "</head>";
+            mLabelListData.pFrame = new RegionListFrame;
 
-            for (int i=0; i < (int)shapeInfoStr.size(); i++ )
+            QStringList regionInfo;
+
+            for (int i=0; i < (int)mLabelListData.shapeDescr.size(); i++ )
             {
+                QString info;
+                info += "<html>";
                 info += QString("<b>Object %1</b>").arg(i+1);
-                info += shapeInfoStr[i] + "<br><br>";
+                info += mLabelListData.shapeDescr[i] + "<br><br>";
+
+                regionInfo << info; // append
             }
 
-            TextInfoDialog  infoDialog(this);
-            infoDialog.setText(info);
+            connect( mLabelListData.pFrame, SIGNAL(currentRegionChanged(int)),
+                     this, SLOT(regionListFrameIndexChanged(int)) );
+            mLabelListData.pFrame->setRegionData( regionInfo );
 
-            infoDialog.exec();
+            mLabelListData.pFrame->show();
+            mLabelListData.pFrame->moveToBottomLeftCorner();
         }
 
         // add to current message
@@ -375,6 +413,42 @@ void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )
 
         statusBarMsg( curMsg + QString("Region count: %1").arg(lblCount), 2000 );
     }
+}
+
+void AnnotatorWnd::regionListFrameIndexChanged(int newRegionIdx)
+{
+    //qDebug() << newRegionIdx;
+    // find pixels and set as highlighted supervoxel
+    std::vector<unsigned int>   regionIdxs;
+    mLabelListData.lblMatrix.findPixelWithvalue( (unsigned int) (newRegionIdx + 1), regionIdxs );
+
+    PixelInfoList  pixList;
+
+    for (unsigned int i=0; i < regionIdxs.size(); i++)
+    {
+        unsigned int x,y,z;
+        unsigned int idx = regionIdxs[i];
+        mLabelListData.lblMatrix.idxToCoord( idx, x, y, z );
+
+        pixList.push_back( PixelInfo(x,y,z,idx) );
+    }
+
+    // convert list to whole image coords
+    mLabelListData.region3D.croppedToWholePixList( mLabelListData.lblMatrix, pixList, mSelectedSV.pixelList );
+
+    // compute centroid so that we can focus on the area we want
+    UIntPoint3D centerPix;    // will hold centroid
+    centerPix.x = centerPix.y = centerPix.z = 0;
+    for (unsigned int i=0; i < mSelectedSV.pixelList.size(); i++)
+        centerPix.add( mSelectedSV.pixelList[i].coords );
+
+    centerPix.divideBy( mSelectedSV.pixelList.size() );
+
+    ui->zSlider->setValue( centerPix.z );
+
+    mSelectedSV.valid = true;
+
+    updateImageSlice();
 }
 
 void AnnotatorWnd::butRunConnectivityCheckNowClicked()
