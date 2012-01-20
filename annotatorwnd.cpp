@@ -474,17 +474,30 @@ void AnnotatorWnd::annotVis3DClicked()
         Matrix3D<LabelType> lblCropped;
         reg.useToCrop( mVolumeLabels, &lblCropped );
 
-        // now only keep the label set in the combo box
-        const LabelType lbl = ui->comboLabel->currentIndex();
+        Matrix3D<PixelType> vR, vG, vB;
+        vR.reallocSizeLike( lblCropped );
+        vG.reallocSizeLike( lblCropped );   // alloc for each color channel
+        vB.reallocSizeLike( lblCropped );
 
-        unsigned int N = lblCropped.numElem();
+        vR.fill(0); vG.fill(0); vB.fill(0);
+
+        const unsigned int N = lblCropped.numElem();
+        const unsigned int maxLbl = mLblColorList.colorList.size();
         for (unsigned int i=0; i < N; i++)
-            lblCropped.data()[i] = 255 * (lblCropped.data()[i] == lbl);
+        {
+            LabelType lbl = lblCropped.data()[i];
+            if (lbl <= 0)   continue;
 
+            if (lbl > maxLbl) continue;
+
+            vR.data()[i] = mLblColorList.colorList[lbl-1].red();
+            vG.data()[i] = mLblColorList.colorList[lbl-1].green();
+            vB.data()[i] = mLblColorList.colorList[lbl-1].blue();
+        }
 
         FijiShow3D  s3d;
         s3d.setConfig(cfg);
-        s3d.run( lblCropped );
+        s3d.run( vR, vG, vB );
     }
 }
 
@@ -778,6 +791,8 @@ void AnnotatorWnd::labelImageMouseMoveEvent(QMouseEvent * e)
         // make copy
         SlicMapType::value_type oldList = mSelectedSV.pixelList;
 
+        const bool dontOverwriteLabeledPixs = ui->chkDontOverwriteLabeledPIxs->isChecked();
+
         mSelectedSV.pixelList.clear();
 
         for (int i=0; i < (int)oldList.size(); i++)
@@ -786,6 +801,12 @@ void AnnotatorWnd::labelImageMouseMoveEvent(QMouseEvent * e)
 
             if ( (val < thrMin) || (val > thrMax) )
                 continue;   //ignore
+
+            if ( dontOverwriteLabeledPixs ) {
+                bool alreayLabeled = mVolumeLabels.data()[ oldList[i].index ] != 0;
+                if ( alreayLabeled )
+                    continue;
+            }
 
             mSelectedSV.pixelList.push_back( oldList[i] );
         }
