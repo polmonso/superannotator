@@ -15,7 +15,7 @@ RegionListFrame::RegionListFrame(QWidget *parent) :
              this, SLOT(listCurrentItemChanged(QListWidgetItem*,QListWidgetItem*)));
 }
 
-void RegionListFrame::setRegionData( const QStringList &info )
+void RegionListFrame::setRegionData( const std::vector< ShapeStatistics<> > &info )
 {
     mRegionDescriptions = info;
 
@@ -38,7 +38,9 @@ void RegionListFrame::listCurrentItemChanged( QListWidgetItem *, QListWidgetItem
     int curItem = ui->listWidget->currentRow();
 
     // show descr
-    ui->textBrowser->setHtml( mRegionDescriptions.at(curItem) );
+    QString s = QString("<b>Region Label = %1</b><br>").arg( mRegionDescriptions.at(curItem).labelIdx() );
+    s += mRegionDescriptions.at(curItem).toString();
+    ui->textBrowser->setHtml( s );
 
     emit currentRegionChanged(curItem);
 }

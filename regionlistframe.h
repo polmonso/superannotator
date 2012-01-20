@@ -4,6 +4,7 @@
 #include <QFrame>
 #include <QStringList>
 #include<QListWidgetItem>
+#include "ShapeStatistics.h"
 
 namespace Ui {
     class RegionListFrame;
@@ -14,13 +15,13 @@ class RegionListFrame : public QFrame
     Q_OBJECT
 
 private:
-    QStringList mRegionDescriptions;
+    std::vector< ShapeStatistics<> > mRegionDescriptions;
 
 public:
     explicit RegionListFrame(QWidget *parent = 0);
     ~RegionListFrame();
 
-    void setRegionData( const QStringList &info );
+    void setRegionData( const std::vector< ShapeStatistics<> > &info );
 
     void moveToBottomLeftCorner();
 

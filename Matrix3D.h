@@ -21,6 +21,7 @@ private:    //disable copy operator, at least for now
     Matrix3D& operator=( const Matrix3D& rhs );
 
     typedef itk::Image<T, 3> ItkImageType;
+    typedef unsigned int     DefaultLabelType;
 
 public:
     typedef T DataType;
@@ -35,7 +36,7 @@ public:
     // creates a binary image based on thresholding btw [thrMin, thrMax]
     // and creates a connected component map
     template<typename T2>
-    void createLabelMap( T thrMin, T thrMax, Matrix3D<T2> *labelImg = 0, bool bFullyConnected = true, T2 *labelCount = 0, std::vector<QString> *shapeDescr = 0 )
+    void createLabelMap( T thrMin, T thrMax, Matrix3D<T2> *labelImg = 0, bool bFullyConnected = true, T2 *labelCount = 0, std::vector<ShapeStatistics<itk::ShapeLabelObject<T2, 3> > > *shapeDescr = 0 )
     {
         typedef itk::Image<T2, 3> LabelImageType;
         typedef itk::BinaryThresholdImageFilter < ItkImageType, ItkImageType> BinaryThresholdImageFilterType;
@@ -100,13 +101,13 @@ public:
             // Loop over all of the blobs
             for(unsigned int i = 1; i <= shapeLabelMapFilter->GetOutput()->GetNumberOfLabelObjects(); i++)
             {
-                    typename LabelToShapeMapFilter::OutputImageType::LabelObjectType* labelObject = shapeLabelMapFilter->GetOutput()->GetLabelObject(i);
+                    typename LabelToShapeMapFilter::OutputImageType::LabelObjectType::Pointer labelObject = shapeLabelMapFilter->GetOutput()->GetLabelObject(i);
 
                     // Output the bounding box (an example of one possible property) of the ith region
                     //std::cout << "Object " << i << " has bounding box " << labelObject->GetBoundingBox() << std::endl;
 
                     //writeShapeInfoTxt( stdout, i, labelObject );
-                    shapeDescr->push_back( ShapeStatistics<typename LabelToShapeMapFilter::OutputImageType::LabelObjectType>( labelObject ).toString() );
+                    shapeDescr->push_back( ShapeStatistics<itk::ShapeLabelObject<T2, 3> >( labelObject, i ) );
             }
         }
     }

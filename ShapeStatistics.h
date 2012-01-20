@@ -2,19 +2,41 @@
 #define SHAPESTATISTICS_H
 
 #include <QString>
+#include <itkShapeLabelObject.h>
 
 // shape statistics class, link to ITK
-template<typename T>    // T is the class of the shape obj
+template<typename T = itk::ShapeLabelObject<unsigned int, 3> >    // T is the class of the shape obj
 class ShapeStatistics
 {
 private:
-    const T* shlPtr;
+    typename T::Pointer shapeInfo;
+    unsigned int mLabelIdx;  //label idx
 
 public:
     ShapeStatistics() { }
-    ShapeStatistics( const T* ptr )
+    ShapeStatistics( const typename T::Pointer shPtr, unsigned int lblIdx )
     {
-        shlPtr = ptr;
+        shapeInfo = shPtr;
+        mLabelIdx = lblIdx;
+    }
+
+    inline unsigned int labelIdx() const {
+        return mLabelIdx;
+    }
+
+    inline unsigned int numVoxels() const {
+        return shapeInfo->GetSize();
+    }
+
+    // comparison operator
+    static inline bool lessThan( const ShapeStatistics<T> & a, const ShapeStatistics<T> & b )
+    {
+        return a.numVoxels() < b.numVoxels();
+    }
+
+    static inline bool greaterThan( const ShapeStatistics<T> & a, const ShapeStatistics<T> & b )
+    {
+        return a.numVoxels() > b.numVoxels();
     }
 
     QString toString()
@@ -24,16 +46,16 @@ public:
 #define ADD_ROW(x,y)    \
     s += QString("<tr> <td>") + x + QString("</td><td>") + y + QString("</td>")
 
-        ADD_ROW( "Phys size", QString("%1").arg( shlPtr->GetPhysicalSize() ) );
+        ADD_ROW( "Phys size", QString("%1").arg( shapeInfo->GetPhysicalSize() ) );
 
 
-        ADD_ROW( "Feret Diameter", QString("%1").arg( shlPtr->GetFeretDiameter() ) );
-        ADD_ROW( "Perimeter", QString("%1").arg( shlPtr->GetPerimeter() ) );
-        ADD_ROW( "Roundness", QString("%1").arg( shlPtr->GetRoundness() ) );
-        ADD_ROW( "Flatness", QString("%1").arg( shlPtr->GetBinaryFlatness() ) );
+        ADD_ROW( "Feret Diameter", QString("%1").arg( shapeInfo->GetFeretDiameter() ) );
+        ADD_ROW( "Perimeter", QString("%1").arg( shapeInfo->GetPerimeter() ) );
+        ADD_ROW( "Roundness", QString("%1").arg( shapeInfo->GetRoundness() ) );
+        ADD_ROW( "Flatness", QString("%1").arg( shapeInfo->GetBinaryFlatness() ) );
 
-        typename T::VectorType moments = shlPtr->GetBinaryPrincipalMoments();
-        typename T::MatrixType pAxes = shlPtr->GetBinaryPrincipalAxes();
+        typename T::VectorType moments = shapeInfo->GetBinaryPrincipalMoments();
+        typename T::MatrixType pAxes = shapeInfo->GetBinaryPrincipalAxes();
 
         ADD_ROW( "Principal Moments", QString("(%1, %2, %3)").arg(moments[0]).arg(moments[1]).arg(moments[2]) );
 

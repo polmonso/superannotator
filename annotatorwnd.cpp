@@ -34,11 +34,11 @@ static Region3D mSVRegion;
 // and other info
 struct
 {
-    RegionListFrame             *pFrame;
-    Matrix3D<unsigned int>      lblMatrix;
-    unsigned int                lblCount;
-    std::vector<QString>        shapeDescr;
-    Region3D                    region3D;  // region used at computation time, to convert back to whole image coordinate sytem
+    RegionListFrame                 *pFrame;
+    Matrix3D<unsigned int>          lblMatrix;
+    unsigned int                    lblCount;
+    std::vector<ShapeStatistics<> >    shapeInfo;
+    Region3D                        region3D;  // region used at computation time, to convert back to whole image coordinate sytem
 
 } static mLabelListData;
 
@@ -367,40 +367,32 @@ void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )
 
         // score image or label image?
         PixelType minThr = lbl; PixelType maxThr = lbl;
-        if ( ui->chkConnectivityScoreImg ) {
+        if ( ui->chkConnectivityScoreImg->isChecked() ) {
             minThr = ui->spinScoreThreshold->value();
             maxThr = 255;
         }
         croppedImg.createLabelMap( minThr, maxThr,
-                                   &mLabelListData.lblMatrix, ui->chkConnectivityfull->isChecked(), &lblCount, showInfo?(&mLabelListData.shapeDescr):0 );
+                                   &mLabelListData.lblMatrix, ui->chkConnectivityfull->isChecked(), &lblCount, showInfo?(&mLabelListData.shapeInfo):0 );
 
         mLabelListData.lblCount = lblCount;
 
         // save the region for which this was computed for offset computation later on
         mLabelListData.region3D = reg;
 
-        if (showInfo)
+        if (showInfo && (lblCount > 0))
         {
+            // sort by size
+            std::sort( mLabelListData.shapeInfo.begin(), mLabelListData.shapeInfo.end(), ShapeStatistics<>::greaterThan );
+
             if (mLabelListData.pFrame != 0)
                 delete mLabelListData.pFrame;
 
             mLabelListData.pFrame = new RegionListFrame;
 
-            QStringList regionInfo;
-
-            for (int i=0; i < (int)mLabelListData.shapeDescr.size(); i++ )
-            {
-                QString info;
-                info += "<html>";
-                info += QString("<b>Object %1</b>").arg(i+1);
-                info += mLabelListData.shapeDescr[i] + "<br><br>";
-
-                regionInfo << info; // append
-            }
-
             connect( mLabelListData.pFrame, SIGNAL(currentRegionChanged(int)),
                      this, SLOT(regionListFrameIndexChanged(int)) );
-            mLabelListData.pFrame->setRegionData( regionInfo );
+
+            mLabelListData.pFrame->setRegionData( mLabelListData.shapeInfo );
 
             mLabelListData.pFrame->show();
             mLabelListData.pFrame->moveToBottomLeftCorner();
@@ -420,7 +412,7 @@ void AnnotatorWnd::regionListFrameIndexChanged(int newRegionIdx)
     //qDebug() << newRegionIdx;
     // find pixels and set as highlighted supervoxel
     std::vector<unsigned int>   regionIdxs;
-    mLabelListData.lblMatrix.findPixelWithvalue( (unsigned int) (newRegionIdx + 1), regionIdxs );
+    mLabelListData.lblMatrix.findPixelWithvalue( mLabelListData.shapeInfo[newRegionIdx].labelIdx() , regionIdxs );
 
     PixelInfoList  pixList;
 
