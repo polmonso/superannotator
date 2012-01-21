@@ -35,8 +35,8 @@
      <rect>
       <x>10</x>
       <y>0</y>
-      <width>1111</width>
-      <height>911</height>
+      <width>1031</width>
+      <height>941</height>
      </rect>
     </property>
     <layout class="QHBoxLayout" name="horizontalLayout">
@@ -60,8 +60,8 @@
        <widget class="QWidget" name="scrollAreaWidgetContents_2">
         <property name="geometry">
          <rect>
-          <x>28</x>
-          <y>163</y>
+          <x>0</x>
+          <y>178</y>
           <width>736</width>
           <height>562</height>
          </rect>
@@ -86,7 +86,7 @@
           <x>0</x>
           <y>0</y>
           <width>288</width>
-          <height>907</height>
+          <height>937</height>
          </rect>
         </property>
         <layout class="QHBoxLayout" name="horizontalLayout_12">
@@ -735,11 +735,22 @@
                  <item>
                   <layout class="QVBoxLayout" name="verticalLayout_11">
                    <item>
-                    <widget class="QCheckBox" name="chkConnectivityEnableOnline">
-                     <property name="text">
-                      <string>Enable online analysis</string>
-                     </property>
-                    </widget>
+                    <layout class="QHBoxLayout" name="horizontalLayout_14">
+                     <item>
+                      <widget class="QCheckBox" name="chkConnectivityEnableOnline">
+                       <property name="text">
+                        <string>Online</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="chkConnectivityDetailedAnalysis">
+                       <property name="text">
+                        <string>Detailed analysis</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
                    </item>
                    <item>
                     <layout class="QHBoxLayout" name="horizontalLayout_13">

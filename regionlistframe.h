@@ -27,10 +27,12 @@ public:
 
 public slots:
     void listCurrentItemChanged( QListWidgetItem *, QListWidgetItem * );
+    void saveAsClicked();
 
 signals:
     // this is emitted when the current region selection is changed
     void currentRegionChanged(int newRegionIdx);
+
 
 private:
     Ui::RegionListFrame *ui;

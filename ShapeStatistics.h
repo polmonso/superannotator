@@ -10,7 +10,9 @@ class ShapeStatistics
 {
 private:
     typename T::Pointer shapeInfo;
-    unsigned int mLabelIdx;  //label idx
+    unsigned int mLabelIdx;  //label idx (in CC volume)
+
+    unsigned int mAnnotationLabel;  // this can be used by an annotation tool to set the class (e.g. pos/neg) of a certain connected region
 
 public:
     ShapeStatistics() { }
@@ -18,6 +20,7 @@ public:
     {
         shapeInfo = shPtr;
         mLabelIdx = lblIdx;
+        mAnnotationLabel = 0;
     }
 
     inline unsigned int labelIdx() const {
@@ -26,6 +29,14 @@ public:
 
     inline unsigned int numVoxels() const {
         return shapeInfo->GetSize();
+    }
+
+    inline unsigned int annotationLabel() const {
+        return mAnnotationLabel;
+    }
+
+    inline void setAnnotationLabel(unsigned int k) {
+        mAnnotationLabel = k;
     }
 
     // comparison operator

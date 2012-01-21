@@ -36,7 +36,9 @@ public:
     // creates a binary image based on thresholding btw [thrMin, thrMax]
     // and creates a connected component map
     template<typename T2>
-    void createLabelMap( T thrMin, T thrMax, Matrix3D<T2> *labelImg = 0, bool bFullyConnected = true, T2 *labelCount = 0, std::vector<ShapeStatistics<itk::ShapeLabelObject<T2, 3> > > *shapeDescr = 0 )
+    void createLabelMap( T thrMin, T thrMax, Matrix3D<T2> *labelImg = 0, bool bFullyConnected = true, T2 *labelCount = 0,
+                         std::vector<ShapeStatistics<itk::ShapeLabelObject<T2, 3> > > *shapeDescr = 0,
+                         bool bComputeFeretAndPerimeter = false)
     {
         typedef itk::Image<T2, 3> LabelImageType;
         typedef itk::BinaryThresholdImageFilter < ItkImageType, ItkImageType> BinaryThresholdImageFilterType;
@@ -90,8 +92,8 @@ public:
             //shapeLabelMapFilter->SetInput2( reader->GetOutput() );
 
             // this is 'expensive' but may help, otherwise most features outputted will be blank
-            shapeLabelMapFilter->SetComputeFeretDiameter(true);
-            shapeLabelMapFilter->SetComputePerimeter(true);
+            shapeLabelMapFilter->SetComputeFeretDiameter(bComputeFeretAndPerimeter);
+            shapeLabelMapFilter->SetComputePerimeter(bComputeFeretAndPerimeter);
 
             shapeLabelMapFilter->Update();
 

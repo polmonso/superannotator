@@ -25,7 +25,8 @@ HEADERS  += annotatorwnd.h \
     Region3D.h \
     ShapeStatistics.h \
     textinfodialog.h \
-    regionlistframe.h
+    regionlistframe.h \
+    RegionGrowing.h
 
 FORMS    += annotatorwnd.ui \
     textinfodialog.ui \
@@ -80,6 +81,7 @@ INCLUDEPATH += $$ITKPATH/
 
 LIBS += -L$$ITKPATH/bin -lITKIO -lITKStatistics -lITKNrrdIO -litkgdcm -litkjpeg12 -litkjpeg16 -litkopenjpeg -litkpng -litktiff -litkjpeg8 -lITKSpatialObject -lITKMetaIO -lITKDICOMParser -lITKEXPAT -lITKniftiio -lITKznz -litkzlib -lITKCommon -litksys -litkvnl_inst -litkvnl_algo -litkvnl -litkvcl -litkv3p_lsqr -lpthread -lm -ldl -litkNetlibSlatec -litkv3p_netlib
 LIBS += -luuid
+
 
 
 

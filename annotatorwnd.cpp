@@ -16,6 +16,8 @@
 #include "SuperVoxeler.h"
 #include "regionlistframe.h"
 
+#include "RegionGrowing.h"
+
 static SuperVoxeler<unsigned char> mSVoxel;
 
 /** Supervoxel selection **/
@@ -114,9 +116,6 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     mCurZSlice = 0;
 
-    ui->spinSVSeed->setValue( 20 );
-    ui->spinSVCubeness->setValue( 40 );
-
 
     ui->scrollArea->setWidget( ui->labelImg );
     ui->labelImg->setScrollArea( ui->scrollArea );;
@@ -179,6 +178,10 @@ void AnnotatorWnd::loadSettings()
     mSettingsData.loadPath = settings.value("loadPath", ".").toString();
     mSettingsData.loadPathScores = settings.value("loadPathScores", ".").toString();
     mSettingsData.loadPathVolume = settings.value("loadPathVolume", ".").toString();
+
+    ui->spinSVCubeness->setValue( settings.value("spinSVCubeness", 40).toInt() );
+    ui->spinSVSeed->setValue( settings.value("spinSVSeed", 20).toInt() );
+    ui->spinSVZ->setValue( settings.value("spinSVZ", 100).toInt() );
 }
 
 void AnnotatorWnd::saveSettings()
@@ -188,6 +191,10 @@ void AnnotatorWnd::saveSettings()
     settings.setValue( "loadPath", mSettingsData.loadPath );
     settings.setValue( "loadPathScores", mSettingsData.loadPathScores );
     settings.setValue( "loadPathVolume", mSettingsData.loadPathVolume );
+
+    settings.setValue("spinSVCubeness", ui->spinSVCubeness->value());
+    settings.setValue("spinSVSeed", ui->spinSVSeed->value());
+    settings.setValue( "spinSVZ", ui->spinSVZ->value() );
 
     qDebug() << m_sSettingsFile;
 }
@@ -346,6 +353,9 @@ void AnnotatorWnd::genSupervoxelClicked()
     updateImageSlice();
 
     statusBarMsg( QString("Done: %1 supervoxels generated.").arg( mSVoxel.numLabels() ), 0 );
+
+    // save supervoxel parameters
+    saveSettings();
 }
 
 void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )
@@ -372,7 +382,8 @@ void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )
             maxThr = 255;
         }
         croppedImg.createLabelMap( minThr, maxThr,
-                                   &mLabelListData.lblMatrix, ui->chkConnectivityfull->isChecked(), &lblCount, showInfo?(&mLabelListData.shapeInfo):0 );
+                                   &mLabelListData.lblMatrix, ui->chkConnectivityfull->isChecked(), &lblCount, showInfo?(&mLabelListData.shapeInfo):0,
+                                   ui->chkConnectivityDetailedAnalysis->isChecked());
 
         mLabelListData.lblCount = lblCount;
 
@@ -459,11 +470,16 @@ void AnnotatorWnd::annotVis3DClicked()
 {
     Region3D reg = getViewportRegion3D();
 
-    if ( reg.totalVoxels() > mMaxSVRegionVoxels )
+    // warn the user about memory usage
     {
-        QMessageBox::critical( this, "Region too large", QString("Please choose a smaller volume.") );
-        reg.valid = false;
-        return;
+        const double memUsg = (reg.totalVoxels() * 3) / (1024.0*1024.0);
+        QMessageBox::StandardButton res =
+                QMessageBox::question( this, "Memory usage",
+                               QString("This operation needs %1 MB of RAM/hard drive space. Continue?").arg(memUsg),
+                               QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes );
+
+        if (res != QMessageBox::Yes)
+            return;
     }
 
     if ( reg.valid )
@@ -723,7 +739,42 @@ void AnnotatorWnd::labelImageMouseReleaseEvent(QMouseEvent * e)
         if (!found)
             return;
 
+        if(0)   // try region growing
+        {
+            // compute region mean
+            unsigned int mean = 0;
+            for ( unsigned int i=0; i < mSelectedSV.pixelList.size(); i++ )
+                mean += mVolumeData.data()[ mSelectedSV.pixelList[i].index ];
+
+            mean /= mSelectedSV.pixelList.size();
+            double fMean = mean;
+
+            double var = 0;
+            for ( unsigned int i=0; i < mSelectedSV.pixelList.size(); i++ ) {
+                double dv = mVolumeData.data()[mSelectedSV.pixelList[i].index] - fMean;
+                var += dv*dv;
+            }
+
+            double stdDev = sqrt( var / mSelectedSV.pixelList.size() );
+
+            double minVal = fMean - stdDev;
+            double maxVal = fMean + stdDev;
+
+            if ( minVal < 0 )   minVal = 0;
+            if ( maxVal > 255 )   maxVal = 255;
+            qDebug() << "Limits " << minVal << "  " << maxVal;
+
+            PixelInfoList pixListResult;
+            unsigned int maxRegionSize = 4 * mSelectedSV.pixelList.size();
+            RegionGrow<PixelType>( mVolumeData, mSelectedSV.pixelList, (PixelType)minVal, (PixelType)maxVal, maxRegionSize,  &pixListResult );
+
+            qDebug() << "New: " << pixListResult.size();
+
+            mSelectedSV.pixelList = pixListResult;
+        }
+
         annotateSelectedSupervoxel();
+
         updateImageSlice();
     }
 
