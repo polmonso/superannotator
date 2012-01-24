@@ -6,6 +6,7 @@
 #include "ColorLists.h"
 
 #include "Region3D.h"
+#include "CommonTypes.h"
 
 namespace Ui {
     class AnnotatorWnd;
@@ -47,9 +48,6 @@ private:
     //  and the slice spin box in the form
     Region3D getViewportRegion3D();
 
-    typedef unsigned char PixelType;
-    typedef unsigned char LabelType;
-
     Matrix3D<PixelType>  mVolumeData;    // loaded data (volume), whole volume
     Matrix3D<LabelType>  mVolumeLabels;  // labels for each pixel in original volume
 
@@ -57,7 +55,7 @@ private:
 
 
     // score image (if loaded), only for aid in labeling
-    Matrix3D<PixelType> mScoreImage;
+    Matrix3D<ScoreType> mScoreImage;
     bool                mScoreImageEnabled;
 
 
@@ -72,8 +70,23 @@ private:
 
     void annotateSelectedSupervoxel();
 
+    // scans for plugins and adds them.
+    void scanPlugins( const QString &pluginFolder );
+
 
     void runConnectivityCheck( const Region3D &reg );
+
+public:
+
+    // called by the plugin to update the display
+    void pluginUpdateDisplay();
+
+    QMenu *getPluginMenuPtr();
+
+    // more for plugins
+    Matrix3D<PixelType> &   getVolumeVoxelData() {  return mVolumeData; }
+    Matrix3D<LabelType> &   getLabelVoxelData()  {  return mVolumeLabels; }
+    Matrix3D<ScoreType> &   getScoreVoxelData()  {  return mScoreImage; }
 
 public slots:
     // called whenever the user has modified a single label supervoxel

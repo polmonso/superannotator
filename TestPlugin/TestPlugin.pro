@@ -1,60 +1,16 @@
-#-------------------------------------------------
-#
-# Project created by QtCreator 2012-01-12T17:46:21
-#
-#-------------------------------------------------
+TEMPLATE = lib
+INCLUDEPATH += ../
 
-QT       += core gui
+HEADERS += \
+    TestPlugin.h \
+    ../PluginBase.h
 
-TARGET = supervoxel-annotator
-TEMPLATE = app
-
-
-SOURCES += main.cpp\
-        annotatorwnd.cpp \
-    qlabelimage.cpp \
-    textinfodialog.cpp \
-    regionlistframe.cpp \
-    PluginServices.cpp
-
-HEADERS  += annotatorwnd.h \
-    qlabelimage.h \
-    SuperVoxeler.h \
-    Matrix3D.h \
-    ColorLists.h \
-    FijiHelper.h \
-    Region3D.h \
-    ShapeStatistics.h \
-    textinfodialog.h \
-    regionlistframe.h \
-    RegionGrowing.h \
-    PluginBase.h \
-    CommonTypes.h \
-    PluginServices.h
-
-FORMS    += annotatorwnd.ui \
-    textinfodialog.ui \
-    regionlistframe.ui
-
-# -- This is a neat trick to export symbols from the executable
-#  so the loaded plugin can link to them
-QMAKE_CXXFLAGS += -fvisibility=hidden
-QMAKE_LFLAGS += -fvisibility=hidden -Wl,--export-dynamic
-
-QMAKE_CXXFLAGS += -fopenmp
-QMAKE_LFLAGS += -fopenmp
+SOURCES += \
+    TestPlugin.cpp
 
 # Replace to point to ITK
 ITKPATH = /data/phd/software/itk/compile/InsightToolkit-3.20.0
 ITKPATH_BUILD = $$ITKPATH/build
-
-# Replace to point to SLIC path
-SLICPATH = $$_PRO_FILE_PWD_/../slic
-
-INCLUDEPATH += $$SLICPATH/../
-
-SOURCES += $$SLICPATH/LKM.cpp $$SLICPATH/utils.cpp
-
 
 #### ITK STUFF
 
@@ -141,6 +97,3 @@ INCLUDEPATH += $$ITKPATH_BUILD/
 
 LIBS += -L$$ITKPATH_BUILD/bin -lITKIO -lITKStatistics -lITKNrrdIO -litkgdcm -litkjpeg12 -litkjpeg16 -litkopenjpeg -litkpng -litktiff -litkjpeg8 -lITKSpatialObject -lITKMetaIO -lITKDICOMParser -lITKEXPAT -lITKniftiio -lITKznz -litkzlib -lITKCommon -litksys -litkvnl_inst -litkvnl_algo -litkvnl -litkvcl -litkv3p_lsqr -lpthread -lm -ldl -litkNetlibSlatec -litkv3p_netlib
 LIBS += -luuid
-
-
-

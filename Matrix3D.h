@@ -12,6 +12,7 @@
 #include <itkLabelImageToShapeLabelMapFilter.h>
 #include "ShapeStatistics.h"
 #include <vector>
+#include <QImage>
 
 template<typename T>
 class Matrix3D

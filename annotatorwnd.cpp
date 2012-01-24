@@ -9,6 +9,7 @@
 #include <QDebug>
 #include <QMessageBox>
 #include <QSettings>
+#include <QLibrary>
 #include "textinfodialog.h"
 
 #include "FijiHelper.h"
@@ -17,6 +18,8 @@
 #include "regionlistframe.h"
 
 #include "RegionGrowing.h"
+
+#include "PluginBase.h"
 
 static SuperVoxeler<unsigned char> mSVoxel;
 
@@ -47,6 +50,8 @@ struct
 
 // maximum size for SV region in voxels, to avoid memory problems
 static unsigned int mMaxSVRegionVoxels;
+
+static PluginServicesList  mPluginServList;
 
 AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
     QMainWindow(parent),
@@ -166,9 +171,58 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
     dialOverlayTransparencyMoved( 0 );
     updateImageSlice();
 
+    scanPlugins( qApp->applicationDirPath() + "/plugins/" );
+
     this->showMaximized();
 }
 
+
+void AnnotatorWnd::scanPlugins( const QString &pluginFolder )
+{
+    // list files
+    QDir dir(pluginFolder);
+    dir.setFilter(QDir::Files | QDir::NoSymLinks);
+    dir.setSorting(QDir::Name);
+
+    qDebug() << "Plugin folder: " << pluginFolder;
+
+    QFileInfoList list = dir.entryInfoList();
+    for (int i = 0; i < list.size(); ++i) {
+        QFileInfo fileInfo = list.at(i);
+
+        QString absFilePath = fileInfo.absoluteFilePath();
+        if ( !QLibrary::isLibrary( absFilePath ) )
+            continue;
+
+        QLibrary library( absFilePath );
+        if (!library.load()) {
+            qDebug() << "Could not load plugin " << absFilePath << ":" << library.errorString();
+            continue;
+        }
+
+        typedef PluginBase*(*PluginCreateFunction)(void);
+
+        PluginCreateFunction createPlugin = (PluginCreateFunction) library.resolve("createPlugin");
+
+        if (createPlugin == 0) {
+            qDebug() << "Could not resolve entry point for plugin " << absFilePath;
+            continue;
+        }
+
+
+        PluginBase *newPlugin = createPlugin();
+        mPluginServList.append( PluginServices( newPlugin->pluginName(), this ) );
+        bool ret = newPlugin->initializePlugin( mPluginServList.last() );
+
+        if (!ret) {
+            qDebug() << "Initialization failed for " << absFilePath;
+            continue;
+        }
+    }
+
+    if ( mPluginServList.isEmpty() )
+        ui->menuPlugins->addAction( "No plugins loaded" )->setEnabled(false);
+}
 
 void AnnotatorWnd::loadSettings()
 {
@@ -962,6 +1016,16 @@ void AnnotatorWnd::labelImageWheelEvent(QWheelEvent * e)
     }
 
     //qDebug("Wheel signal: %d", e->delta());
+}
+
+void AnnotatorWnd::pluginUpdateDisplay()
+{
+    updateImageSlice();
+}
+
+QMenu *AnnotatorWnd::getPluginMenuPtr()
+{
+    return ui->menuPlugins;
 }
 
 AnnotatorWnd::~AnnotatorWnd()
