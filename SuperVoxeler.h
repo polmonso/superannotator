@@ -1,12 +1,15 @@
 #ifndef SUPERVOXELER_H
 #define SUPERVOXELER_H
 
+#include "Matrix3D.h"
+
 #define fatalMsg(x) qFatal(x)
 #include <slic/LKM.h>
 #include <slic/mex/include/create_slicmap.hxx>
+#include <slic/mex/include/find_neighbors.hxx>
 #undef fatalMsg
 
-#include "Matrix3D.h"
+
 #ifdef _OPENMP
     #include <omp.h>
 #endif
@@ -32,6 +35,8 @@ private:
 
 public:
     SuperVoxeler() { mIsEmpty = true; mNumLabels = 0; }
+
+    inline bool empty() { return mIsEmpty; }
 
     unsigned int numLabels() const { return mNumLabels; }
 
@@ -80,6 +85,8 @@ public:
         /** Compute the inverse map **/
         qDebug("Computing slic map");
         createSlicMap( mPixelToVoxel, mNumLabels, mVoxelToPixel );
+
+        mIsEmpty = false;
     }
 
     #ifdef _OPENMP
