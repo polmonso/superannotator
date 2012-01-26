@@ -23,11 +23,14 @@ public:
         mPluginServices = &pServices;
 
         /** Add a menu item **/
-        QAction *action = mPluginServices->getPluginMenu()->addAction( "Random labels" );
-        connect( action, SIGNAL(triggered()), this, SLOT(randomLabelsClicked()) );
+        for (unsigned int i=0; i < mPluginServices->getMaxOverlayVolumes(); i++) {
+            QAction *action = mPluginServices->getPluginMenu()->addAction( QString("Random labels to overlay %1").arg(i+1) );
+            action->setData( i );
+            connect( action, SIGNAL(triggered()), this, SLOT(randomLabelsClicked()) );
+        }
 
         /** Add a menu item **/
-        action = mPluginServices->getPluginMenu()->addAction( "Show message box" );
+        QAction *action = mPluginServices->getPluginMenu()->addAction( "Show message box" );
         connect( action, SIGNAL(triggered()), this, SLOT(showMsgBoxClicked()) );
 
         return true;
@@ -41,10 +44,23 @@ public:
 public slots:
     void randomLabelsClicked()
     {
-        Matrix3D<LabelType> &lblMatrix = mPluginServices->getLabelVoxelData();
-        LabelType *dPtr = lblMatrix.data();
-        for (unsigned int i=0; i < lblMatrix.numElem(); i++)
-            dPtr[i] = rand() % 3;
+        QAction *action = qobject_cast<QAction *>(sender());
+        unsigned int idx = action->data().toUInt();
+
+        qDebug("Overlay %d", idx);
+
+        Matrix3D<OverlayType> &ovMatrix = mPluginServices->getOverlayVolumeData( idx );
+
+        // MUST BE RESIZED!
+        ovMatrix.reallocSizeLike( mPluginServices->getVolumeVoxelData() );
+
+        LabelType *dPtr = ovMatrix.data();
+
+        for (unsigned int i=0; i < ovMatrix.numElem(); i++)
+            dPtr[i] = rand() % 128;
+
+        // set enabled
+        mPluginServices->setOverlayVisible( idx, true );
 
         mPluginServices->updateDisplay();
     }

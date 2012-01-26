@@ -13,4 +13,6 @@ typedef unsigned char LabelType;
 
 typedef unsigned char ScoreType;
 
+typedef ScoreType OverlayType;
+
 #endif // COMMONTYPES_H

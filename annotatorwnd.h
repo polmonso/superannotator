@@ -43,6 +43,9 @@ private:
 
     // colors for labels + icons
     LabelColorList   mLblColorList;
+    OverlayColorList mOverlayColorList;
+    SelectionColor   mSelectionColor;
+    ScoreColor       mScoreColor;
 
     // returns a region3d object according to current viewport
     //  and the slice spin box in the form
@@ -59,7 +62,6 @@ private:
     bool                mScoreImageEnabled;
 
 
-    void updateImageSlice();    //updates the label widget with mCurZSlice slice
 
     void updateCursorPixelInfo( int x, int y, int z );   // shows current pixel position
 
@@ -88,7 +90,13 @@ public:
     Matrix3D<LabelType> &   getLabelVoxelData()  {  return mVolumeLabels; }
     Matrix3D<ScoreType> &   getScoreVoxelData()  {  return mScoreImage; }
 
+    Matrix3D<OverlayType> & getOverlayVoxelData( unsigned int num );
+    void                    setOverlayVisible( unsigned int num, bool visible );
+
 public slots:
+
+    void updateImageSlice();    //updates the label widget with mCurZSlice slice
+
     // called whenever the user has modified a single label supervoxel
     void userModifiedSupervoxelLabel();
     void butRunConnectivityCheckNowClicked();

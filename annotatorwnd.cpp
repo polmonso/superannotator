@@ -12,6 +12,8 @@
 #include <QLibrary>
 #include "textinfodialog.h"
 
+#include "MiscUtils.h"
+
 #include "FijiHelper.h"
 
 #include "SuperVoxeler.h"
@@ -21,6 +23,9 @@
 
 #include "PluginBase.h"
 
+/** ---- these variables here are a bit dirty, but it is to avoid putting them in the .h file
+ ** even though it prevents multiple instances
+ */
 static SuperVoxeler<unsigned char> mSVoxel;
 
 /** Supervoxel selection **/
@@ -52,6 +57,12 @@ struct
 static unsigned int mMaxSVRegionVoxels;
 
 static PluginServicesList  mPluginServList;
+
+// list of overlay volumes, we use ptrs because it has no copy xtor
+std::vector< Matrix3D<OverlayType> * >  mOverlayVolumeList;
+std::vector<QAction *>                mOverlayMenuActions;
+
+/** -------- Class begin ------------ **/
 
 AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
     QMainWindow(parent),
@@ -171,11 +182,53 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
     dialOverlayTransparencyMoved( 0 );
     updateImageSlice();
 
+    // add as many overlay volumes (initially empty) as needed
+    {
+        ui->menuView->addSeparator();
+
+        // create objects + add overlay visibility menus/shortcuts
+        for (int i=0; i < (int)PluginServices::getMaxOverlayVolumes(); i++ )
+        {
+            mOverlayVolumeList.push_back( new Matrix3D<OverlayType>() );
+
+            QAction *a = ui->menuView->addAction( QString("Overlay %1").arg(i+1) );
+            a->setCheckable(true);
+            a->setChecked(false);
+            a->setEnabled(false);
+
+            a->setShortcut( QKeySequence( QString("%1").arg(i+1) ) );
+
+            connect( a, SIGNAL(triggered()), this, SLOT(updateImageSlice()) );
+
+            mOverlayMenuActions.push_back( a );
+        }
+    }
+
     scanPlugins( qApp->applicationDirPath() + "/plugins/" );
 
     this->showMaximized();
 }
 
+Matrix3D<OverlayType> &  AnnotatorWnd::getOverlayVoxelData( unsigned int num )
+{
+    return *mOverlayVolumeList.at(num);  // note the assert on num!
+}
+
+void AnnotatorWnd::setOverlayVisible( unsigned int num, bool visible )
+{
+    // we will only set it visible if it contains valid info
+    if (!mOverlayVolumeList.at(num)->isSizeLike( mVolumeData )) {
+        qDebug() << "Overlay visible command ignored because overlay is not valid yet.";
+        mOverlayMenuActions.at(num)->setEnabled(false);
+        mOverlayMenuActions.at(num)->setChecked(false);
+        return;
+    }
+
+    mOverlayMenuActions.at(num)->setEnabled(visible);
+    mOverlayMenuActions.at(num)->setChecked(visible);
+
+    updateImageSlice();
+}
 
 void AnnotatorWnd::scanPlugins( const QString &pluginFolder )
 {
@@ -680,41 +733,26 @@ void AnnotatorWnd::updateImageSlice()
         {
             // use as red channel
             const PixelType *scorePtr = mScoreImage.sliceData( mCurZSlice );
-
             unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
-
             unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
 
-            bool first = true;
-            for (unsigned int i=0; i < sz; i++)
-            {
-                float r = (pixPtr[i] >> 16) & 0xFF;
-                float g = (pixPtr[i] >> 8) & 0xFF;
-                float b = (pixPtr[i] >> 0) & 0xFF;
-
-                float sc = scorePtr[i] / 255.0f;
-                float scInv = 1.0f - sc;
-
-                if ( first && (sc > 0.8) )
-                    qDebug("Bef: %f %f %f", r, g ,b);
-
-                g = scInv*g;
-                b = scInv*b;
-                r = r * scInv +  sc*255;
-
-                unsigned int iR = r;
-                unsigned int iG = g;
-                unsigned int iB = b;
-
-                if (first && (sc > 0.8)) {
-                    qDebug("Val: %f %f %f %f", r, g, b, sc);
-                    first = false;
-                }
-
-                //pixPtr[i] = (pixPtr[i] & 0xFF00FFFF) | (((unsigned int) scorePtr[i]) << 16);
-                pixPtr[i] = 0xFF000000 | (iR<<16) | (iG<<8) | iB;
-            }
+            overlayRGB( pixPtr, scorePtr, pixPtr, sz, mScoreColor );
         }
+    }
+
+    // user-overlays
+    for (unsigned int i=0; i < mOverlayMenuActions.size(); i++)
+    {
+        if ( !mOverlayVolumeList[i]->isSizeLike( mVolumeData ) )
+            continue;
+        if ( !mOverlayMenuActions[i]->isChecked() )
+            continue;
+
+        const OverlayType *scorePtr = mOverlayVolumeList[i]->sliceData( mCurZSlice );
+        unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
+        unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
+
+        overlayRGB( pixPtr, scorePtr, pixPtr, sz, mOverlayColorList.colorList[i] );
     }
 
     // check ground truth slice and draw it

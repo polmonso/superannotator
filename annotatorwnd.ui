@@ -844,7 +844,7 @@
     </property>
     <widget class="QMenu" name="menuOverlay_score_image">
      <property name="title">
-      <string>Overlay score image...</string>
+      <string>Score image...</string>
      </property>
      <addaction name="actionScoreImageLoad"/>
      <addaction name="actionScoreImageEnabled"/>

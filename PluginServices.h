@@ -33,6 +33,15 @@ public:
     // returns main window pointer. Useful to show messageboxes, etc..
     QWidget *getMainWindow() const;
 
+    // returns maximum number of overlay volumes
+    static unsigned int getMaxOverlayVolumes();
+
+    // returns a reference to a given overlay volume data
+    Matrix3D<ScoreType> & getOverlayVolumeData( unsigned int num ) const;
+
+    // enables/disables the visualization of a given overlay
+    void setOverlayVisible( unsigned int num, bool visible ) const;
+
     /** constructor only called by the main app **/
     PluginServices( const QString &pluginName, AnnotatorWnd *annWnd );
 };
