@@ -582,6 +582,20 @@ void AnnotatorWnd::annotVis3DClicked()
     QAction *aScore = menu.addAction("Score volume");
     aScore->setEnabled( mScoreImage.isSizeLike( mVolumeData ) );
 
+    // add overlays, if available
+    std::vector< QAction * > overlayActions;
+    for (unsigned int i=0; i < mOverlayMenuActions.size(); i++) {
+        bool enabled = true;
+
+        if ( !mOverlayVolumeList[i]->isSizeLike( mVolumeData ) )
+            enabled = false;
+
+        QAction *a = menu.addAction( mOverlayMenuActions[i]->text() );
+        a->setEnabled(enabled);
+
+        overlayActions.push_back(a);
+    }
+
     QAction *res = menu.exec( ui->butAnnotVis3D->mapToGlobal( QPoint(0,0) ) );
 
     // this assumes that labeltype = pixeltype = scoretype!
@@ -593,7 +607,18 @@ void AnnotatorWnd::annotVis3DClicked()
     } else if( res == aScore )
         srcPtr = &mScoreImage;
     else
-        return;
+    {
+        bool found =  false;
+        for (unsigned int i=0; i < overlayActions.size(); i++)
+            if ( res == overlayActions[i] ) {
+                found = true;
+                srcPtr = mOverlayVolumeList[i];
+                break;
+            }
+
+        if (!found)
+            return;
+    }
 
     // now we can process it
     Region3D reg = getViewportRegion3D();
