@@ -176,7 +176,7 @@ public:
         realloc( m.width(), m.height(), m.depth() );
     }
 
-    // existing pointer
+    // existing pointer, WILL NOT DELETE DATA ON EXIT!
     Matrix3D( T *data, unsigned int w, unsigned int h, unsigned int d ) {
         mWidth = w;
         mHeight = h;
@@ -226,11 +226,13 @@ public:
     inline void freeData() {
         //qDebug("Free");
         if ((mData != 0) && (mKeepOnDestr == false)) {
-            //qDebug("Free2");
             delete[] mData;
 
             mData = 0;
             mHeight = mWidth = mDepth = 0;
+        } else {
+            if(mKeepOnDestr)
+                qDebug("Matrix memory not freed.");
         }
     }
 
@@ -272,6 +274,8 @@ public:
     {
         try
         {
+            freeData(); // free before
+
             typename itk::ImageFileReader<ItkImageType>::Pointer reader = itk::ImageFileReader<ItkImageType>::New();
             reader->SetFileName( fName );
             reader->Update();
@@ -283,7 +287,8 @@ public:
 
             mData = &img->GetPixel( index );
 
-            img->Register();    //so it won't delete the data ;)
+            //img->Register();    //so it won't delete the data ;)
+            img->GetPixelContainer()->SetContainerManageMemory(false);
 
             typename ItkImageType::SizeType imSize = img->GetLargestPossibleRegion().GetSize();
             mWidth = imSize[0];
@@ -291,7 +296,7 @@ public:
             mDepth = imSize[2];
 
             updateCache();
-            mKeepOnDestr = true;
+            mKeepOnDestr = false;
         }
         catch(std::exception &e)
         {
