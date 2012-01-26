@@ -7,6 +7,7 @@
 #include <QListWidgetItem>
 #include <QFile>
 #include <QFileDialog>
+#include <QDebug>
 
 RegionListFrame::RegionListFrame(QWidget *parent) :
     QFrame(parent),
@@ -18,6 +19,39 @@ RegionListFrame::RegionListFrame(QWidget *parent) :
              this, SLOT(listCurrentItemChanged(QListWidgetItem*,QListWidgetItem*)));
 
     connect( ui->butSave, SIGNAL(clicked()), this, SLOT(saveAsClicked()) );
+    connect( ui->listWidget, SIGNAL(clicked(QModelIndex)), this, SLOT(listClickedSignal(QModelIndex)) );
+}
+
+void RegionListFrame::listClickedSignal(QModelIndex mIdx)
+{
+    static int lastCurrentItem = -1;
+
+    int newItem = ui->listWidget->currentRow();
+
+    if ((lastCurrentItem == -1) || (newItem != lastCurrentItem)) {
+        lastCurrentItem = newItem;
+        return;
+    }
+
+    Qt::CheckState newState;
+    switch( ui->listWidget->item(newItem)->checkState() )
+    {
+        case Qt::Unchecked:
+            newState = Qt::PartiallyChecked;
+            break;
+        case Qt::PartiallyChecked:
+            newState = Qt::Checked;
+            break;
+        case Qt::Checked:
+            newState = Qt::Unchecked;
+            break;
+    }
+
+    ui->listWidget->item(newItem)->setCheckState( newState );
+
+    lastCurrentItem = newItem;
+
+    //qDebug("Clicked");
 }
 
 void RegionListFrame::setRegionData( const std::vector< ShapeStatistics<> > &info )
@@ -31,8 +65,15 @@ void RegionListFrame::setRegionData( const std::vector< ShapeStatistics<> > &inf
         QString name = QString("Region %1").arg(i+1);
         QListWidgetItem *item = new QListWidgetItem( ui->listWidget );
         item->setText( name );
-        item->setFlags( item->flags() | Qt::ItemIsUserCheckable );
-        item->setCheckState( (mRegionDescriptions[i].annotationLabel() == 0) ? Qt::Unchecked : Qt::Checked );
+        item->setFlags( item->flags() | Qt::ItemIsUserCheckable | Qt::ItemIsTristate );
+
+        Qt::CheckState state = Qt::Unchecked;
+        if (mRegionDescriptions[i].annotationLabel() == 0)
+            state = Qt::PartiallyChecked;
+        else if(mRegionDescriptions[i].annotationLabel() == 1)
+            state = Qt::Checked;
+
+        item->setCheckState( state );
         ui->listWidget->addItem( item );
     }
 

@@ -5,6 +5,7 @@
 #include <QStringList>
 #include<QListWidgetItem>
 #include "ShapeStatistics.h"
+#include <QModelIndex>
 
 namespace Ui {
     class RegionListFrame;
@@ -28,11 +29,11 @@ public:
 public slots:
     void listCurrentItemChanged( QListWidgetItem *, QListWidgetItem * );
     void saveAsClicked();
+    void listClickedSignal(QModelIndex mIdx);
 
 signals:
     // this is emitted when the current region selection is changed
     void currentRegionChanged(int newRegionIdx);
-
 
 private:
     Ui::RegionListFrame *ui;
