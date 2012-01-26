@@ -181,7 +181,7 @@ void AnnotatorWnd::scanPlugins( const QString &pluginFolder )
 {
     // list files
     QDir dir(pluginFolder);
-    dir.setFilter(QDir::Files | QDir::NoSymLinks);
+    dir.setFilter(QDir::Files);
     dir.setSorting(QDir::Name);
 
     qDebug() << "Plugin folder: " << pluginFolder;
