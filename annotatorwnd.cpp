@@ -522,11 +522,35 @@ void AnnotatorWnd::userModifiedSupervoxelLabel()
 
 void AnnotatorWnd::annotVis3DClicked()
 {
+    QMenu menu("Source", this);
+
+    QAction *aLabel = menu.addAction("Labels volume");
+
+    QAction *aScore = menu.addAction("Score volume");
+    aScore->setEnabled( mScoreImage.isSizeLike( mVolumeData ) );
+
+    QAction *res = menu.exec( ui->butAnnotVis3D->mapToGlobal( QPoint(0,0) ) );
+
+    // this assumes that labeltype = pixeltype = scoretype!
+    Matrix3D<PixelType> *srcPtr;
+    bool isLabel = false;
+    if ( res == aLabel ) {
+        srcPtr = &mVolumeLabels;
+        isLabel = true;
+    } else if( res == aScore )
+        srcPtr = &mScoreImage;
+    else
+        return;
+
+    // now we can process it
     Region3D reg = getViewportRegion3D();
 
     // warn the user about memory usage
     {
-        const double memUsg = (reg.totalVoxels() * 3) / (1024.0*1024.0);
+        int mult = 1;
+        if (isLabel)    mult = 3;
+
+        const double memUsg = (reg.totalVoxels() * mult) / (1024.0*1024.0);
         QMessageBox::StandardButton res =
                 QMessageBox::question( this, "Memory usage",
                                QString("This operation needs %1 MB of RAM/hard drive space. Continue?").arg(memUsg),
@@ -536,14 +560,20 @@ void AnnotatorWnd::annotVis3DClicked()
             return;
     }
 
-    if ( reg.valid )
+    FijiConfig  cfg;
+    cfg.fijiExe = "/data/phd/software/Fiji.app/fiji-linux64";
+
+    FijiShow3D  s3d;
+    s3d.setConfig(cfg);
+
+    if (!reg.valid)
+        return;
+
+    Matrix3D<LabelType> lblCropped;
+    reg.useToCrop( *srcPtr, &lblCropped );
+
+    if (isLabel)    // then put some nice coloring
     {
-        FijiConfig  cfg;
-        cfg.fijiExe = "/data/phd/software/Fiji.app/fiji-linux64";
-
-        Matrix3D<LabelType> lblCropped;
-        reg.useToCrop( mVolumeLabels, &lblCropped );
-
         Matrix3D<PixelType> vR, vG, vB;
         vR.reallocSizeLike( lblCropped );
         vG.reallocSizeLike( lblCropped );   // alloc for each color channel
@@ -565,9 +595,12 @@ void AnnotatorWnd::annotVis3DClicked()
             vB.data()[i] = mLblColorList.colorList[lbl-1].blue();
         }
 
-        FijiShow3D  s3d;
-        s3d.setConfig(cfg);
+        // color
         s3d.run( vR, vG, vB );
+    }
+    else
+    {
+        s3d.run( *srcPtr );    // 1-channel
     }
 }
 
