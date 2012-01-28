@@ -127,6 +127,10 @@ public slots:
 
     // called when the region changes in the region info window
     void regionListFrameIndexChanged(int);
+
+    // called when an image wants to be loaded in an overlay layer
+    void overlayLoadTriggered();
+    void overlayChooseColorTriggered();
 };
 
 #endif // ANNOTATORWND_H

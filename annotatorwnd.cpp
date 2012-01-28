@@ -22,6 +22,7 @@
 #include "RegionGrowing.h"
 
 #include "PluginBase.h"
+#include <QColorDialog>
 
 /** ---- these variables here are a bit dirty, but it is to avoid putting them in the .h file
  ** even though it prevents multiple instances
@@ -61,6 +62,7 @@ static PluginServicesList  mPluginServList;
 // list of overlay volumes, we use ptrs because it has no copy xtor
 std::vector< Matrix3D<OverlayType> * >  mOverlayVolumeList;
 std::vector<QAction *>                mOverlayMenuActions;
+std::vector<QMenu *>                  mOverlayMenus; // choose color menu action
 
 /** -------- Class begin ------------ **/
 
@@ -191,22 +193,98 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
         {
             mOverlayVolumeList.push_back( new Matrix3D<OverlayType>() );
 
-            QAction *a = ui->menuView->addAction( QString("Overlay %1").arg(i+1) );
+            QString name = QString("Overlay %1").arg(i+1);
+
+            // add group for each one
+            QMenu *subMenu = ui->menuView->addMenu( mOverlayColorList.getIcon(i), name );
+            mOverlayMenus.push_back(subMenu);
+
+            // enable check box
+            QAction *a = subMenu->addAction( "Enable " + name );
             a->setCheckable(true);
             a->setChecked(false);
             a->setEnabled(false);
-
             a->setShortcut( QKeySequence( QString("%1").arg(i+1) ) );
 
             connect( a, SIGNAL(triggered()), this, SLOT(updateImageSlice()) );
 
             mOverlayMenuActions.push_back( a );
+
+            // add color chooser
+            QAction *aColor = subMenu->addAction( "Choose color..." );
+            aColor->setEnabled(true);
+
+            connect( aColor, SIGNAL(triggered()), this, SLOT(overlayChooseColorTriggered()) );
+
+
+            // and a load button too
+            QAction *load = subMenu->addAction("Load from file...");
+            load->setCheckable(false);
+            load->setEnabled(true);
+            load->setData( i ); // use data as index
+
+            connect( load, SIGNAL(triggered()), this, SLOT(overlayLoadTriggered()) );
         }
     }
 
     scanPlugins( qApp->applicationDirPath() + "/plugins/" );
 
     this->showMaximized();
+}
+
+void AnnotatorWnd::overlayChooseColorTriggered()
+{
+    QAction *action = qobject_cast<QAction *>(sender());
+    int idx = action->data().toInt();
+
+    QColor c = QColorDialog::getColor( mOverlayColorList.getColor(idx), this );
+
+    if (!c.isValid())   return;
+
+    mOverlayColorList.replaceColor( idx, c );
+
+    mOverlayMenus.at(idx)->setIcon( mOverlayColorList.getIcon(idx) );
+    updateImageSlice();
+}
+
+void AnnotatorWnd::overlayLoadTriggered()
+{
+    QAction *action = qobject_cast<QAction *>(sender());
+    int idx = action->data().toInt();
+
+    QString fileName = QFileDialog::getOpenFileName( this, "Load overlay image", mSettingsData.loadPathScores, mFileTypeFilter );
+
+    if (fileName.isEmpty())
+        return;
+
+    qDebug() << fileName;
+
+    std::string stdFName = fileName.toLocal8Bit().constData();
+
+    if (!mOverlayVolumeList[idx]->load( stdFName ))
+        QMessageBox::critical(this, "Cannot open file", QString("%1 could not be read.").arg(fileName));
+
+
+    if ( !mOverlayVolumeList[idx]->isSizeLike( mVolumeData ) )
+    {
+        QMessageBox::critical(this, "Dimensions do not match", "Image does not match original volume dimensions. Disabling this overlay.");
+
+        mOverlayMenuActions[idx]->setChecked(false);
+        mOverlayMenuActions[idx]->setEnabled(false);
+
+        updateImageSlice();
+        return;
+    }
+
+    // enable and show ;)
+    mOverlayMenuActions[idx]->setChecked(true);
+    mOverlayMenuActions[idx]->setEnabled(true);
+
+    updateImageSlice();
+    statusBarMsg("Overlay image loaded successfully.");
+
+    mSettingsData.loadPathScores = QFileInfo(fileName).absolutePath();
+    this->saveSettings();
 }
 
 Matrix3D<OverlayType> &  AnnotatorWnd::getOverlayVoxelData( unsigned int num )
@@ -660,7 +738,7 @@ void AnnotatorWnd::annotVis3DClicked()
         vR.fill(0); vG.fill(0); vB.fill(0);
 
         const unsigned int N = lblCropped.numElem();
-        const unsigned int maxLbl = mLblColorList.colorList.size();
+        const unsigned int maxLbl = mLblColorList.count();
         for (unsigned int i=0; i < N; i++)
         {
             LabelType lbl = lblCropped.data()[i];
@@ -668,9 +746,9 @@ void AnnotatorWnd::annotVis3DClicked()
 
             if (lbl > maxLbl) continue;
 
-            vR.data()[i] = mLblColorList.colorList[lbl-1].red();
-            vG.data()[i] = mLblColorList.colorList[lbl-1].green();
-            vB.data()[i] = mLblColorList.colorList[lbl-1].blue();
+            vR.data()[i] = mLblColorList.getColor(lbl-1).red();
+            vG.data()[i] = mLblColorList.getColor(lbl-1).green();
+            vB.data()[i] = mLblColorList.getColor(lbl-1).blue();
         }
 
         // color
@@ -689,9 +767,9 @@ void AnnotatorWnd::statusBarMsg( const QString &str, int timeout )
 
 void AnnotatorWnd::fillLabelComboBox( int numLabels )
 {
-    if (numLabels > mLblColorList.colorList.size()) {
+    if (numLabels > mLblColorList.count()) {
         qWarning("fillLabelComboBox: numLabels exceeds hueList size");
-        numLabels = mLblColorList.colorList.size();
+        numLabels = mLblColorList.count();
     }
 
     ui->comboLabel->clear();
@@ -699,8 +777,8 @@ void AnnotatorWnd::fillLabelComboBox( int numLabels )
     // first none class
     ui->comboLabel->addItem("Unlabeled");
 
-    for (int i=0; i < mLblColorList.colorList.size(); i++)
-        ui->comboLabel->addItem( mLblColorList.iconList[i], QString("Class %1").arg(i+1) );
+    for (int i=0; i < mLblColorList.count(); i++)
+        ui->comboLabel->addItem( mLblColorList.getIcon(i), QString("Class %1").arg(i+1) );
 
     ui->comboLabel->setCurrentIndex(1);
 }
@@ -777,7 +855,7 @@ void AnnotatorWnd::updateImageSlice()
         unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
         unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
 
-        overlayRGB( pixPtr, scorePtr, pixPtr, sz, mOverlayColorList.colorList[i] );
+        overlayRGB( pixPtr, scorePtr, pixPtr, sz, mOverlayColorList.getColor(i) );
     }
 
     // check ground truth slice and draw it
@@ -791,7 +869,7 @@ void AnnotatorWnd::updateImageSlice()
         unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
 
         unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
-        int maxLabel = (int) mLblColorList.colorList.size();
+        int maxLabel = (int) mLblColorList.count();
 
         for (unsigned int i=0; i < sz; i++)
         {
@@ -805,7 +883,7 @@ void AnnotatorWnd::updateImageSlice()
 
             int vv = (floatTransp * (pixPtr[i] & 0xFF))/256;
 
-            const QColor &color = mLblColorList.colorList[ lblPtr[i] - 1];
+            const QColor &color = mLblColorList.getColor(lblPtr[i] - 1);
 
             int g = vv + (floatTranspInv * color.green()) / 256;
             int b = vv + (floatTranspInv * color.blue()) / 256;

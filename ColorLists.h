@@ -5,39 +5,68 @@
 #include <QColor>
 #include <QIcon>
 
-struct LabelColorList
+// main color list class
+struct ColorListBase
 {
+private:
     std::vector<QColor> colorList;
-
     std::vector<QIcon> iconList;
+    const int iconSize;
 
-    inline LabelColorList()
+    inline QPixmap createIcon( const QColor &c ) {
+        QPixmap icon( iconSize, iconSize );
+        icon.fill( c );
+
+        return icon;
+    }
+
+    inline void updateIcon( unsigned int idx ) {
+        iconList.at(idx) = createIcon( colorList.at(idx) );
+    }
+
+public:
+    ColorListBase() : iconSize(32) { }
+
+    inline void addColor( const QColor &c ) {
+        colorList.push_back( c );
+        iconList.push_back( createIcon(c) );
+    }
+
+    inline void replaceColor( unsigned int idx, const QColor &c )
     {
-        colorList.push_back( QColor(Qt::magenta) );
-        colorList.push_back( QColor(Qt::green) );
-        colorList.push_back( QColor(Qt::blue) );
+        colorList.at(idx) = c;
+        updateIcon(idx);
+    }
 
-        // create icons
-        const int iconSize = 32;
-        for (int i=0; i < (int)colorList.size(); i++ )
-        {
-            QPixmap icon( iconSize, iconSize );
-            icon.fill( colorList[i] );
+    inline const QColor& getColor(unsigned int idx) const {
+        return colorList.at(idx);
+    }
 
-            iconList.push_back( icon );
-        }
+    inline const QIcon& getIcon(unsigned int idx) const {
+        return iconList.at(idx);
+    }
+
+    inline unsigned int count() const { return colorList.size(); }
+};
+
+struct LabelColorList : public ColorListBase
+{
+public:
+    LabelColorList() : ColorListBase()
+    {
+        addColor( QColor(Qt::magenta) );
+        addColor( QColor(Qt::green) );
+        addColor( QColor(Qt::blue) );
     }
 };
 
-struct OverlayColorList
+struct OverlayColorList : public ColorListBase
 {
-    std::vector<QColor> colorList;
-
-    inline OverlayColorList()
+    OverlayColorList() : ColorListBase()
     {
-        colorList.push_back( QColor(0xFF, 0xC2, 0x0B) );
-        colorList.push_back( QColor(0xFF, 0x0B, 0xFF) );
-        colorList.push_back( QColor(0xFF, 0xFF, 0x00) );
+        addColor( QColor(0xFF, 0xC2, 0x0B) );
+        addColor( QColor(0xFF, 0x0B, 0xFF) );
+        addColor( QColor(0xFF, 0xFF, 0x00) );
     }
 };
 

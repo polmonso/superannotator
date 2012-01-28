@@ -44,7 +44,7 @@ Q_DECL_EXPORT unsigned int PluginServices::getMaxOverlayVolumes()
 
     if (firstTime) {
         OverlayColorList cList;
-        maxOverlayVolumes = cList.colorList.size();
+        maxOverlayVolumes = cList.count();
         firstTime = false;
     }
 
