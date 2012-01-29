@@ -803,8 +803,51 @@ void AnnotatorWnd::chkLabelOverlayStateChanged(int state)
 
 void AnnotatorWnd::updateCursorPixelInfo(int x, int y, int z)
 {
-    ui->labelPixInfo->setText(
-                QString("Pixel (%1, %2, %3)").arg(x).arg(y).arg(z));
+    QString pixPos = QString("Pixel (%1, %2, %3): %4").arg(x).arg(y).arg(z).arg( mVolumeData(x,y,z), 3 );
+    ui->labelPixInfoTop->setText( pixPos );
+
+
+#define CELLA(x) \
+    QString("<td align=\"left\">") + x + QString("</td>")
+
+#define CELLB(x) \
+    QString("<td align=\"right\">") + x + QString("</td>")
+
+    // SCORE
+    QString scorePos = CELLA("Score");
+    if (!mScoreImage.isSizeLike(mVolumeData))
+        scorePos += CELLB("N/A");
+    else {
+        ScoreType val = mScoreImage(x,y,z);
+        scorePos += CELLB( QString().sprintf( "%.3d %.2f", val, val/255.0 ) );
+    }
+
+    // overlays
+    std::vector<QString> overlayStr( mOverlayVolumeList.size() );
+    for (unsigned int i=0; i < overlayStr.size(); i++)
+    {
+        overlayStr[i] = CELLA(QString("Overlay %1").arg(i+1));
+        if ( !mOverlayVolumeList[i]->isSizeLike(mVolumeData) )
+        {
+            overlayStr[i] += CELLB("N/A");
+            continue;
+        }
+
+        OverlayType val = (*mOverlayVolumeList[i])(x,y,z);
+
+        overlayStr[i] += CELLB( QString().sprintf( "%.3d %.2f", val, val/255.0 ) );
+    }
+
+#undef CELLA
+#undef CELLB
+
+    QString s = "<html><table width=\"100%\">";
+    s += "<tr>" + scorePos + "</tr>";
+
+    for (unsigned int i=0; i < overlayStr.size(); i++)
+        s += "<tr>" + overlayStr[i] + "</tr>";
+
+    ui->labelPixInfoMore->setText( s );
 }
 
 void AnnotatorWnd::zSliderMoved(int newPos)
@@ -1040,12 +1083,13 @@ void AnnotatorWnd::labelImageMouseMoveEvent(QMouseEvent * e)
     if (x >= mVolumeData.width())   invalid = true;
     if (y >= mVolumeData.height())  invalid = true;
 
+    updateCursorPixelInfo( x, y, mCurZSlice );
+
     if(invalid || (!mSVRegion.valid))
     {
         return;
     }
 
-    updateCursorPixelInfo( x, y, mCurZSlice );
 
     if (e->modifiers() != Qt::ControlModifier)
         return; //then don't do anything, so the person can move the mouse away

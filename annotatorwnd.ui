@@ -85,8 +85,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>288</width>
-          <height>937</height>
+          <width>298</width>
+          <height>919</height>
          </rect>
         </property>
         <layout class="QHBoxLayout" name="horizontalLayout_12">
@@ -100,7 +100,7 @@
            </property>
            <property name="minimumSize">
             <size>
-             <width>260</width>
+             <width>280</width>
              <height>0</height>
             </size>
            </property>
@@ -126,7 +126,7 @@
                <enum>QLayout::SetMaximumSize</enum>
               </property>
               <item>
-               <widget class="QLabel" name="labelPixInfo">
+               <widget class="QLabel" name="labelPixInfoTop">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                   <horstretch>0</horstretch>
@@ -475,7 +475,7 @@
                <bool>false</bool>
               </property>
               <property name="title">
-               <string>Visualization</string>
+               <string>Pixel Info</string>
               </property>
               <property name="flat">
                <bool>false</bool>
@@ -500,7 +500,7 @@
                  <enum>QLayout::SetDefaultConstraint</enum>
                 </property>
                 <item>
-                 <layout class="QHBoxLayout" name="horizontalLayout_8" stretch="0,0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_8" stretch="0">
                   <property name="sizeConstraint">
                    <enum>QLayout::SetDefaultConstraint</enum>
                   </property>
@@ -511,49 +511,27 @@
                    <number>0</number>
                   </property>
                   <item>
-                   <widget class="QCheckBox" name="chkThresholdBelow">
+                   <widget class="QLabel" name="labelPixInfoMore">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="autoFillBackground">
+                     <bool>false</bool>
+                    </property>
                     <property name="text">
-                     <string>Threshold below</string>
+                     <string>TextLabel xcv</string>
                     </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QSpinBox" name="spinThrBelow">
-                    <property name="minimum">
-                     <number>1</number>
+                    <property name="textFormat">
+                     <enum>Qt::AutoText</enum>
                     </property>
-                    <property name="maximum">
-                     <number>255</number>
+                    <property name="scaledContents">
+                     <bool>false</bool>
                     </property>
-                    <property name="singleStep">
-                     <number>128</number>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item>
-                 <layout class="QHBoxLayout" name="horizontalLayout_9">
-                  <item>
-                   <widget class="QLabel" name="label_6">
-                    <property name="text">
-                     <string>Fix</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QSpinBox" name="spinPixMax_2">
-                    <property name="minimum">
-                     <number>2</number>
-                    </property>
-                    <property name="maximum">
-                     <number>255</number>
-                    </property>
-                    <property name="singleStep">
-                     <number>2</number>
-                    </property>
-                    <property name="value">
-                     <number>255</number>
+                    <property name="alignment">
+                     <set>Qt::AlignCenter</set>
                     </property>
                    </widget>
                   </item>
