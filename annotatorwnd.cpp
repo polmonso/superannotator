@@ -954,8 +954,12 @@ void AnnotatorWnd::updateImageSlice()
 
     if (mSelectedSV.valid)  //if selection is valid, draw highlight
     {
-        int selHue = 0;
-        int selSat = 200;
+        const qreal opacity = 0.6;
+        const qreal invOpacity = 0.99 - opacity;
+
+        const qreal cRd = mSelectionColor.redF() * opacity;
+        const qreal cGr = mSelectionColor.greenF() * opacity;
+        const qreal cBl = mSelectionColor.blueF() * opacity;
 
         for (int i=0; i < mSelectedSV.pixelList.size(); i++)
         {
@@ -966,12 +970,13 @@ void AnnotatorWnd::updateImageSlice()
             unsigned int x = mSelectedSV.pixelList[i].coords.x;
             unsigned int y = mSelectedSV.pixelList[i].coords.y;
 
-            QColor color = QColor( qimg.pixel(x, y) );
+            QColor pixColor = QColor::fromRgb( qimg.pixel(x, y) );
 
-            int hVal = color.value() + 100;
-            if (hVal > 255) hVal = 255;
-            color.setHsv( selHue, selSat, hVal );
-            qimg.setPixel( x, y, color.rgb() );
+            qreal r = pixColor.redF() * invOpacity + cRd;
+            qreal g = pixColor.greenF() * invOpacity + cGr;
+            qreal b = pixColor.blueF() * invOpacity + cBl;
+
+            qimg.setPixel( x, y, QColor::fromRgbF( r, g, b ).rgb() );
         }
     }
 

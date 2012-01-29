@@ -55,7 +55,7 @@ public:
     LabelColorList() : ColorListBase()
     {
         addColor( QColor(Qt::magenta) );
-        addColor( QColor(Qt::green) );
+        addColor( QColor(0x8A, 0x00, 0xF5) );
         addColor( QColor(Qt::blue) );
     }
 };
@@ -73,7 +73,7 @@ struct OverlayColorList : public ColorListBase
 class SelectionColor : public QColor
 {
 public:
-    SelectionColor() : QColor(0x6A, 0x00, 0xD5) { }
+    SelectionColor() : QColor(Qt::green) { }
 };
 
 class ScoreColor : public QColor
