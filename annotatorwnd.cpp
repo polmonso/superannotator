@@ -1096,7 +1096,8 @@ void AnnotatorWnd::labelImageMouseMoveEvent(QMouseEvent * e)
     if (x >= mVolumeData.width())   invalid = true;
     if (y >= mVolumeData.height())  invalid = true;
 
-    updateCursorPixelInfo( x, y, mCurZSlice );
+    if (!invalid)
+        updateCursorPixelInfo( x, y, mCurZSlice );
 
     if(invalid || (!mSVRegion.valid))
     {
