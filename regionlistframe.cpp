@@ -8,10 +8,14 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QDebug>
+#include <QMenu>
 
-RegionListFrame::RegionListFrame(QWidget *parent) :
+#include "annotatorwnd.h"
+
+RegionListFrame::RegionListFrame(QWidget *parent, AnnotatorWnd *annWnd) :
     QFrame(parent),
-    ui(new Ui::RegionListFrame)
+    ui(new Ui::RegionListFrame),
+    mAnnotatorWnd(annWnd)
 {
     ui->setupUi(this);
 
@@ -20,6 +24,34 @@ RegionListFrame::RegionListFrame(QWidget *parent) :
 
     connect( ui->butSave, SIGNAL(clicked()), this, SLOT(saveAsClicked()) );
     connect( ui->listWidget, SIGNAL(clicked(QModelIndex)), this, SLOT(listClickedSignal(QModelIndex)) );
+    connect( ui->butLabelRegion, SIGNAL(clicked()), this, SLOT(butLabelRegionClicked()) );
+}
+
+void RegionListFrame::butLabelRegionClicked()
+{
+    QMenu menu("Assign to", this);
+
+    QStringList sList;
+    mAnnotatorWnd->getLabelClassList( sList );
+
+    foreach( const QString &s, sList )
+    {
+        menu.addAction( s );
+    }
+
+    QAction *res = menu.exec( ui->butLabelRegion->mapToGlobal( QPoint(0,0) ) );
+
+    unsigned int i=0;
+    foreach( const QString &s, sList )
+    {
+        if ( res->text() == s )
+        {
+            emit labelRegion( ui->listWidget->currentRow() , i );
+
+            break;
+        }
+        i++;
+    }
 }
 
 void RegionListFrame::listClickedSignal(QModelIndex mIdx)
@@ -112,7 +144,7 @@ void RegionListFrame::listCurrentItemChanged( QListWidgetItem *, QListWidgetItem
     if (ui->listWidget->selectedItems().count() == 0)
         return;
 
-    int curItem = ui->listWidget->currentRow();
+    const int curItem = ui->listWidget->currentRow();
 
     // show descr
     QString s = QString("<b>Region Label = %1</b><br>").arg( mRegionDescriptions.at(curItem).labelIdx() );

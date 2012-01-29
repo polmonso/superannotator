@@ -50,6 +50,13 @@
          </property>
         </widget>
        </item>
+       <item>
+        <widget class="QPushButton" name="butLabelRegion">
+         <property name="text">
+          <string>Label region...</string>
+         </property>
+        </widget>
+       </item>
       </layout>
      </item>
      <item>

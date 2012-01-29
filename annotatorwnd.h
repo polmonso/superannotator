@@ -12,6 +12,8 @@ namespace Ui {
     class AnnotatorWnd;
 }
 
+struct SupervoxelSelection;
+
 class AnnotatorWnd : public QMainWindow
 {
     Q_OBJECT
@@ -70,7 +72,7 @@ private:
 
     void statusBarMsg( const QString &str, int timeout = 1200 );
 
-    void annotateSelectedSupervoxel();
+    void annotateSupervoxel( const SupervoxelSelection &SV, LabelType label );
 
     // scans for plugins and adds them.
     void scanPlugins( const QString &pluginFolder );
@@ -92,6 +94,9 @@ public:
 
     Matrix3D<OverlayType> & getOverlayVoxelData( unsigned int num );
     void                    setOverlayVisible( unsigned int num, bool visible );
+
+    // returns one string per class name
+    void                    getLabelClassList( QStringList &sList );
 
 public slots:
 
@@ -127,6 +132,7 @@ public slots:
 
     // called when the region changes in the region info window
     void regionListFrameIndexChanged(int);
+    void regionListFrameLabelRegion(uint,uint);
 
     // called when an image wants to be loaded in an overlay layer
     void overlayLoadTriggered();

@@ -30,7 +30,7 @@
 static SuperVoxeler<unsigned char> mSVoxel;
 
 /** Supervoxel selection **/
-struct
+struct SupervoxelSelection
 {
     bool  valid;    // if it contains valid selection information
 
@@ -50,6 +50,7 @@ struct
     unsigned int                    lblCount;
     std::vector<ShapeStatistics<> >    shapeInfo;
     Region3D                        region3D;  // region used at computation time, to convert back to whole image coordinate sytem
+    SlicMapType                     labelToPixelMap;    // to speed up processing
 
 } static mLabelListData;
 
@@ -575,6 +576,9 @@ void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )
         // save the region for which this was computed for offset computation later on
         mLabelListData.region3D = reg;
 
+        // create inverse list
+        createSlicMapT<true>( mLabelListData.lblMatrix, lblCount, mLabelListData.labelToPixelMap );
+
         if (showInfo && (lblCount > 0))
         {
             // sort by size
@@ -583,10 +587,13 @@ void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )
             if (mLabelListData.pFrame != 0)
                 delete mLabelListData.pFrame;
 
-            mLabelListData.pFrame = new RegionListFrame;
+            mLabelListData.pFrame = new RegionListFrame(0, this);
 
             connect( mLabelListData.pFrame, SIGNAL(currentRegionChanged(int)),
                      this, SLOT(regionListFrameIndexChanged(int)) );
+
+            connect( mLabelListData.pFrame, SIGNAL(labelRegion(uint,uint)),
+                     this, SLOT(regionListFrameLabelRegion(uint,uint)));
 
             mLabelListData.pFrame->setRegionData( mLabelListData.shapeInfo );
 
@@ -603,26 +610,26 @@ void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )
     }
 }
 
+void AnnotatorWnd::regionListFrameLabelRegion(uint regionIdx, uint labelId)
+{
+    unsigned int pixLabelIdx = mLabelListData.shapeInfo[regionIdx].labelIdx();
+    mLabelListData.region3D.croppedToWholePixList( mVolumeLabels, mLabelListData.labelToPixelMap.at( pixLabelIdx - 1 ), mSelectedSV.pixelList );
+
+    mSelectedSV.valid = true;
+
+    annotateSupervoxel(mSelectedSV, labelId);
+
+    mSelectedSV.valid = false;
+
+    updateImageSlice();
+}
+
 void AnnotatorWnd::regionListFrameIndexChanged(int newRegionIdx)
 {
     //qDebug() << newRegionIdx;
     // find pixels and set as highlighted supervoxel
-    std::vector<unsigned int>   regionIdxs;
-    mLabelListData.lblMatrix.findPixelWithvalue( mLabelListData.shapeInfo[newRegionIdx].labelIdx() , regionIdxs );
-
-    PixelInfoList  pixList;
-
-    for (unsigned int i=0; i < regionIdxs.size(); i++)
-    {
-        unsigned int x,y,z;
-        unsigned int idx = regionIdxs[i];
-        mLabelListData.lblMatrix.idxToCoord( idx, x, y, z );
-
-        pixList.push_back( PixelInfo(x,y,z,idx) );
-    }
-
-    // convert list to whole image coords
-    mLabelListData.region3D.croppedToWholePixList( mLabelListData.lblMatrix, pixList, mSelectedSV.pixelList );
+    unsigned int pixLabelIdx = mLabelListData.shapeInfo[newRegionIdx].labelIdx();
+    mLabelListData.region3D.croppedToWholePixList( mVolumeLabels, mLabelListData.labelToPixelMap.at( pixLabelIdx - 1 ), mSelectedSV.pixelList );
 
     // compute centroid so that we can focus on the area we want
     UIntPoint3D centerPix;    // will hold centroid
@@ -649,6 +656,13 @@ void AnnotatorWnd::userModifiedSupervoxelLabel()
 {
     if ( ui->chkConnectivityEnableOnline->isChecked() )
         butRunConnectivityCheckNowClicked();
+}
+
+void AnnotatorWnd::getLabelClassList( QStringList &sList )
+{
+    sList.clear();
+    for(int i=0; i < ui->comboLabel->count(); i++)
+        sList += ui->comboLabel->itemText(i);
 }
 
 void AnnotatorWnd::annotVis3DClicked()
@@ -964,20 +978,18 @@ void AnnotatorWnd::updateImageSlice()
     ui->labelImg->setPixmap( QPixmap::fromImage(qimg) );
 }
 
-void AnnotatorWnd::annotateSelectedSupervoxel()
+void AnnotatorWnd::annotateSupervoxel( const SupervoxelSelection &SV, LabelType label )
 {
-    if (!mSelectedSV.valid)
+    if (!SV.valid)
         return;
 
     // then mark it according to the GT
-    const unsigned char label = (unsigned char) ui->comboLabel->currentIndex();
-    for (int i=0; i < mSelectedSV.pixelList.size(); i++)
-        mVolumeLabels.data()[ mSelectedSV.pixelList[i].index ] = label;
+    for (int i=0; i < SV.pixelList.size(); i++) {
+        mVolumeLabels.data()[ SV.pixelList[i].index ] = label;
+    }
 
     //// this should go on a status bar, and disappear after a while
-    statusBarMsg(QString("%1 pixels labeled with Label %2").arg(mSelectedSV.pixelList.size()).arg(label));
-
-    mSelectedSV.valid = false;  //so that the current supervoxel won't be displayed after update
+    statusBarMsg(QString("%1 pixels labeled with Label %2").arg(SV.pixelList.size()).arg(label));
 
     // callback
     userModifiedSupervoxelLabel();
@@ -1044,7 +1056,8 @@ void AnnotatorWnd::labelImageMouseReleaseEvent(QMouseEvent * e)
             mSelectedSV.pixelList = pixListResult;
         }
 
-        annotateSelectedSupervoxel();
+        annotateSupervoxel( mSelectedSV, ui->comboLabel->currentIndex() );
+        mSelectedSV.valid = false;
 
         updateImageSlice();
     }
@@ -1161,8 +1174,10 @@ void AnnotatorWnd::labelImageMouseMoveEvent(QMouseEvent * e)
     mSelectedSV.valid = true;
 
     // if mouse is pressed, then automatically annotate it
-    if ( e->buttons() == Qt::LeftButton )
-        annotateSelectedSupervoxel();
+    if ( e->buttons() == Qt::LeftButton ) {
+        annotateSupervoxel( mSelectedSV, ui->comboLabel->currentIndex() );
+        mSelectedSV.valid = false;
+    }
 
     updateImageSlice();
 }
