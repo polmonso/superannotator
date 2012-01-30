@@ -7,6 +7,7 @@
 #include <slic/LKM.h>
 #include <slic/mex/include/create_slicmap.hxx>
 #include <slic/mex/include/find_neighbors.hxx>
+#include <slic/mex/include/compute_histogram.hxx>
 #undef fatalMsg
 
 
@@ -29,6 +30,9 @@ private:
 
     Matrix3D<IDType>    mPixelToVoxel;  // pixel to voxel ID 'table'
     SlicMapType         mVoxelToPixel;  // voxel ID to pixel 'table'
+
+    std::vector< HistogramType >    mHistograms; // one histogram per supervoxel
+    std::vector<float>              mMean;       // mean of a given svox
 
     unsigned int mNumLabels; //number of supervoxels
 
@@ -87,6 +91,32 @@ public:
         createSlicMap( mPixelToVoxel, mNumLabels, mVoxelToPixel );
 
         mIsEmpty = false;
+    }
+
+    // computes the histogram and mean of every supervoxel
+    void computeSingleHistogramAndMean( const Matrix3D<T> &rawImg, HistogramOpts<T> hOpts )
+    {
+        mHistograms.resize( mNumLabels );
+        mMean.resize( mNumLabels );
+
+        #pragma omp parallel for schedule(dynamic)
+        for (unsigned int sIdx=0; sIdx < mNumLabels; sIdx++)
+        {
+            mMean[sIdx] = computeHistogram(
+                        PixelInfoListValueIterator<T>::begin( rawImg.data(), mVoxelToPixel[sIdx] ),
+                        PixelInfoListValueIterator<T>::end( rawImg.data(), mVoxelToPixel[sIdx] ),
+                        mHistograms[sIdx], hOpts, false, true );
+        }
+    }
+
+    // warning, no range check!
+    inline const std::vector< HistogramType > &histograms() {
+        return mHistograms;
+    }
+
+    // warning: no range check
+    inline const std::vector<float> & means() {
+        return mMean;
     }
 
     #ifdef _OPENMP

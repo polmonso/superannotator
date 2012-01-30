@@ -12,7 +12,10 @@
 #include <itkLabelImageToShapeLabelMapFilter.h>
 #include "ShapeStatistics.h"
 #include <vector>
-#include <QImage>
+
+#ifdef QT_VERSION_STR
+    #include <QImage>
+#endif
 
 template<typename T>
 class Matrix3D
@@ -231,8 +234,8 @@ public:
             mData = 0;
             mHeight = mWidth = mDepth = 0;
         } else {
-            if(mKeepOnDestr)
-                qDebug("Matrix memory not freed.");
+            //if(mKeepOnDestr)
+              //  qDebug("Matrix memory not freed.");
         }
     }
 
@@ -379,7 +382,11 @@ public:
     inline const T *sliceData(unsigned int z) const
     {
         if (isEmpty())
-            qFatal("Tried to get slice from empty ImageVolume");
+            #ifdef QT_VERSION_STR
+                qFatal("Tried to get slice from empty ImageVolume");
+            #else
+                return (T *)0;
+            #endif
 
         if (z >= mDepth)
             z = mDepth-1;
@@ -390,7 +397,11 @@ public:
     inline T *sliceData(unsigned int z)
     {
         if (isEmpty())
-            qFatal("Tried to get slice from empty ImageVolume");
+            #ifdef QT_VERSION_STR
+                qFatal("Tried to get slice from empty ImageVolume");
+            #else
+                return (T *)0;
+            #endif
 
         if (z >= mDepth)
             z = mDepth-1;
@@ -398,6 +409,7 @@ public:
         return mData + z*mWidth*mHeight;
     }
 
+#ifdef QT_VERSION_STR
     // sliceCoord 0..2
     inline void QImageSlice( unsigned int z, QImage &qimg ) const
     {
@@ -413,6 +425,7 @@ public:
             dataPtr[i] = D | (D<<8) | (D<<16) | (0xFF<<24);
         }
     }
+#endif
 
     // if all elemenst are equal
     bool operator ==(const Matrix3D<T>& b) const
@@ -420,7 +433,7 @@ public:
         for (unsigned int i=0; i < mNumElem; i++)
         {
             if ( b.data()[i] != data()[i] ){
-                qDebug(" != at %d", (int)i );
+                //qDebug(" != at %d", (int)i );
                 return false;
             }
         }

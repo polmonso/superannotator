@@ -1272,4 +1272,8 @@ AnnotatorWnd::~AnnotatorWnd()
     delete ui;
 }
 
-
+void AnnotatorWnd::closeEvent(QCloseEvent *evt)
+{
+    qApp->quit();
+    QMainWindow::closeEvent(evt);
+}

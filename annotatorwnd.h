@@ -37,6 +37,9 @@ private:
     void loadSettings();
     void saveSettings();
 
+protected:
+    void closeEvent(QCloseEvent *);
+
 private:
     Ui::AnnotatorWnd *ui;
     int mCurZSlice;

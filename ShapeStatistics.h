@@ -1,7 +1,9 @@
 #ifndef SHAPESTATISTICS_H
 #define SHAPESTATISTICS_H
 
-#include <QString>
+#ifdef QT_VERSION_STR
+    #include <QString>
+#endif
 #include <itkShapeLabelObject.h>
 
 // shape statistics class, link to ITK
@@ -49,7 +51,7 @@ public:
     {
         return a.numVoxels() > b.numVoxels();
     }
-
+#ifdef QT_VERSION_STR
     QString toString()
     {
         QString s = "<table border=\"1\">";
@@ -82,6 +84,7 @@ public:
 
         return s;
     }
+#endif
 };
 
 #endif // SHAPESTATISTICS_H
