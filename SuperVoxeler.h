@@ -93,6 +93,36 @@ public:
         mIsEmpty = false;
     }
 
+    // just saves volume, no other info
+    bool save( const std::string &fName ) const {
+        if (!mPixelToVoxel.save( fName ))
+            return false;
+
+        return true;
+    }
+
+    bool load( const std::string &fName ) {
+        if (!mPixelToVoxel.load( fName ))
+            return false;
+
+        mHistograms.clear();
+        mMean.clear();
+
+        // compute number of labels
+        mNumLabels = 0;
+        for (unsigned int i=0; i < mPixelToVoxel.numElem(); i++) {
+            if ( mPixelToVoxel.data()[i] > mNumLabels )
+                mNumLabels = mPixelToVoxel.data()[i];
+        }
+
+        mNumLabels++;   // add 1 (zero-based index)
+
+        qDebug("Computing slic map");
+        createSlicMap( mPixelToVoxel, mNumLabels, mVoxelToPixel );
+
+        return true;
+    }
+
     // computes the histogram and mean of every supervoxel
     void computeSingleHistogramAndMean( const Matrix3D<T> &rawImg, HistogramOpts<T> hOpts )
     {
