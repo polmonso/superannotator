@@ -318,8 +318,6 @@ public:
         return &ptr->GetPixel(index);
     }
 
-private:
-
     // creates an ItkImage pointer to represent the data in this volume
     typename ItkImageType::Pointer asItkImage() const
     {
