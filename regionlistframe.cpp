@@ -40,6 +40,8 @@ void RegionListFrame::butLabelRegionClicked()
     }
 
     QAction *res = menu.exec( ui->butLabelRegion->mapToGlobal( QPoint(0,0) ) );
+    if (res == 0)
+        return;
 
     unsigned int i=0;
     foreach( const QString &s, sList )
