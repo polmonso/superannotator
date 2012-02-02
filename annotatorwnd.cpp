@@ -24,6 +24,8 @@
 #include "PluginBase.h"
 #include <QColorDialog>
 
+#include "preferencesdialog.h"
+
 /** ---- these variables here are a bit dirty, but it is to avoid putting them in the .h file
  ** even though it prevents multiple instances
  */
@@ -175,6 +177,8 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     connect(ui->butAnnotVis3D, SIGNAL(clicked()), this, SLOT(annotVis3DClicked()));
 
+    connect( ui->actionPreferences, SIGNAL(triggered()), this, SLOT(showPreferencesDialog()) );
+
 
     ui->chkLabelOverlay->setChecked(true);
 
@@ -231,6 +235,19 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
     scanPlugins( qApp->applicationDirPath() + "/plugins/" );
 
     this->showMaximized();
+}
+
+void AnnotatorWnd::showPreferencesDialog()
+{
+    PreferencesDialog dialog(this);
+
+    dialog.setFijiExePath( mSettingsData.fijiExePath );
+
+    if (dialog.exec() == QDialog::Rejected)
+        return;
+
+    mSettingsData.fijiExePath = dialog.getFijiExePath();
+    this->saveSettings();
 }
 
 void AnnotatorWnd::overlayChooseColorTriggered()
@@ -364,6 +381,7 @@ void AnnotatorWnd::loadSettings()
     mSettingsData.loadPath = settings.value("loadPath", ".").toString();
     mSettingsData.loadPathScores = settings.value("loadPathScores", ".").toString();
     mSettingsData.loadPathVolume = settings.value("loadPathVolume", ".").toString();
+    mSettingsData.fijiExePath = settings.value("fijiExePath", "Not set").toString();
 
     ui->spinSVCubeness->setValue( settings.value("spinSVCubeness", 40).toInt() );
     ui->spinSVSeed->setValue( settings.value("spinSVSeed", 20).toInt() );
@@ -381,6 +399,7 @@ void AnnotatorWnd::saveSettings()
     settings.setValue("spinSVCubeness", ui->spinSVCubeness->value());
     settings.setValue("spinSVSeed", ui->spinSVSeed->value());
     settings.setValue( "spinSVZ", ui->spinSVZ->value() );
+    settings.setValue( "fijiExePath", mSettingsData.fijiExePath );
 
     qDebug() << m_sSettingsFile;
 }
@@ -731,7 +750,12 @@ void AnnotatorWnd::annotVis3DClicked()
     }
 
     FijiConfig  cfg;
-    cfg.fijiExe = "/data/phd/software/Fiji.app/fiji-linux64";
+    cfg.fijiExe = mSettingsData.fijiExePath;
+
+    if ( !QFile::exists(cfg.fijiExe) ) {
+        QMessageBox::critical(this, "Error", "Fiji executable not found. Please go to the preferences menu and specify its path.");
+        return;
+    }
 
     FijiShow3D  s3d;
     s3d.setConfig(cfg);
@@ -766,11 +790,13 @@ void AnnotatorWnd::annotVis3DClicked()
         }
 
         // color
-        s3d.run( vR, vG, vB );
+        if (!s3d.run( vR, vG, vB ))
+            QMessageBox::critical(this, "Error", "There was an error when trying to execute Fiji. Please go to the preferences menu and check its path.");
     }
     else
     {
-        s3d.run( *srcPtr );    // 1-channel
+        if (!s3d.run( *srcPtr ))    // 1-channel
+            QMessageBox::critical(this, "Error", "There was an error when trying to execute Fiji. Please go to the preferences menu and check its path.");
     }
 }
 

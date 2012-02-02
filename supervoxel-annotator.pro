@@ -15,7 +15,8 @@ SOURCES += main.cpp\
     qlabelimage.cpp \
     textinfodialog.cpp \
     regionlistframe.cpp \
-    PluginServices.cpp
+    PluginServices.cpp \
+    preferencesdialog.cpp
 
 HEADERS  += annotatorwnd.h \
     qlabelimage.h \
@@ -31,11 +32,13 @@ HEADERS  += annotatorwnd.h \
     PluginBase.h \
     CommonTypes.h \
     PluginServices.h \
-    MiscUtils.h
+    MiscUtils.h \
+    preferencesdialog.h
 
 FORMS    += annotatorwnd.ui \
     textinfodialog.ui \
-    regionlistframe.ui
+    regionlistframe.ui \
+    preferencesdialog.ui
 
 # -- This is a neat trick to export symbols from the executable
 #  so the loaded plugin can link to them
@@ -142,6 +145,13 @@ INCLUDEPATH += $$ITKPATH_BUILD/
 
 LIBS += -L$$ITKPATH_BUILD/bin -lITKIO -lITKStatistics -lITKNrrdIO -litkgdcm -litkjpeg12 -litkjpeg16 -litkopenjpeg -litkpng -litktiff -litkjpeg8 -lITKSpatialObject -lITKMetaIO -lITKDICOMParser -lITKEXPAT -lITKniftiio -lITKznz -litkzlib -lITKCommon -litksys -litkvnl_inst -litkvnl_algo -litkvnl -litkvcl -litkv3p_lsqr -lpthread -lm -ldl -litkNetlibSlatec -litkv3p_netlib
 LIBS += -luuid
+
+OTHER_FILES += \
+    TODO.txt
+
+
+
+
 
 
 

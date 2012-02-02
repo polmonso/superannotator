@@ -32,6 +32,7 @@ private:
 
         QString loadPathScores; // for score volume
         QString loadPathVolume; // for main volume
+        QString fijiExePath;
     } mSettingsData;
 
     void loadSettings();
@@ -104,6 +105,8 @@ public:
 public slots:
 
     void updateImageSlice();    //updates the label widget with mCurZSlice slice
+
+    void                    showPreferencesDialog();
 
     // called whenever the user has modified a single label supervoxel
     void userModifiedSupervoxelLabel();

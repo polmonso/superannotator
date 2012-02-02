@@ -86,7 +86,7 @@
           <x>0</x>
           <y>0</y>
           <width>298</width>
-          <height>919</height>
+          <height>937</height>
          </rect>
         </property>
         <layout class="QHBoxLayout" name="horizontalLayout_12">
@@ -518,6 +518,11 @@
                       <verstretch>0</verstretch>
                      </sizepolicy>
                     </property>
+                    <property name="font">
+                     <font>
+                      <pointsize>10</pointsize>
+                     </font>
+                    </property>
                     <property name="autoFillBackground">
                      <bool>false</bool>
                     </property>
@@ -837,10 +842,10 @@
     <property name="title">
      <string>File</string>
     </property>
+    <addaction name="actionSave_annotation"/>
     <addaction name="actionLoad_annotation"/>
     <addaction name="separator"/>
-    <addaction name="actionSave_annotation"/>
-    <addaction name="separator"/>
+    <addaction name="actionPreferences"/>
    </widget>
    <widget class="QMenu" name="menuPlugins">
     <property name="title">
@@ -915,6 +920,11 @@
    </property>
    <property name="shortcut">
     <string>O</string>
+   </property>
+  </action>
+  <action name="actionPreferences">
+   <property name="text">
+    <string>Preferences...</string>
    </property>
   </action>
  </widget>

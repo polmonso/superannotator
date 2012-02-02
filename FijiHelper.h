@@ -112,7 +112,8 @@ public:
         script.close();
 
         QString toRun = mConfig.fijiExe + " -macro " + fScript + " &";
-        system( toRun.toLatin1().constData() );
+        if ( QProcess::startDetached( toRun.toLatin1().constData() ) == false)
+            return false;
 
         return true;
     }
