@@ -47,7 +47,7 @@ public:
         // opts
         script.write( QString(
                           "call(\"ij3d.ImageJ3DViewer.setCoordinateSystem\", \"false\");"
-                          "call(\"ij3d.ImageJ3DViewer.add\", \"annVol.tif\", \"None\", \"annVol.tif\", \"0\", \"true\", \"true\", \"true\", \"1\", \"0\");"
+                          "call(\"ij3d.ImageJ3DViewer.add\", \"annVol.tif\", \"None\", \"annVol.tif\", \"0\", \"true\", \"true\", \"true\", \"2\", \"0\");"
                           ).toLatin1() );
 
         // close img window
@@ -57,7 +57,8 @@ public:
         script.close();
 
         QString toRun = mConfig.fijiExe + " -macro " + fScript + " &";
-        system( toRun.toLatin1().constData() );
+        if ( !QProcess::startDetached( toRun.toLatin1().constData() ) )
+            return false;
 
         return true;
     }
@@ -102,7 +103,7 @@ public:
         // opts
         script.write( QString(
                           "call(\"ij3d.ImageJ3DViewer.setCoordinateSystem\", \"false\");"
-                          "call(\"ij3d.ImageJ3DViewer.add\", \"Composite\", \"None\", \"Composite\", \"0\", \"true\", \"true\", \"true\", \"1\", \"0\");"
+                          "call(\"ij3d.ImageJ3DViewer.add\", \"Composite\", \"None\", \"Composite\", \"0\", \"true\", \"true\", \"true\", \"2\", \"0\");"
                           ).toLatin1() );
 
         // close img window
