@@ -179,6 +179,9 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     connect( ui->actionPreferences, SIGNAL(triggered()), this, SLOT(showPreferencesDialog()) );
 
+    connect( ui->spinScoreThrAbove, SIGNAL(valueChanged(int)), this, SLOT(updateImageSlice(int)) );
+    connect( ui->spinScoreThrBelow, SIGNAL(valueChanged(int)), this, SLOT(updateImageSlice(int)) );
+
 
     ui->chkLabelOverlay->setChecked(true);
 
@@ -520,7 +523,7 @@ Region3D AnnotatorWnd::getViewportRegion3D()
     if (zMax >= mVolumeData.depth())    zMax = mVolumeData.depth() - 1;
 
     // selected x,y region + whole z range
-    return Region3D( ui->labelImg->getViewableRect(), zMin, zMax - zMin );
+    return Region3D( ui->labelImg->getViewableRect(), zMin, zMax - zMin + 1 );
 }
 
 void AnnotatorWnd::genSupervoxelClicked()
@@ -529,11 +532,11 @@ void AnnotatorWnd::genSupervoxelClicked()
     //qDebug() << "Size: " << ui->labelImg->width() << " " <<  ui->labelImg->height();
 
     // prepare Z range
-    int zMin = mCurZSlice - ui->spinSVZ->value();
-    int zMax = mCurZSlice + ui->spinSVZ->value();
+    //int zMin = mCurZSlice - ui->spinSVZ->value();
+    //int zMax = mCurZSlice + ui->spinSVZ->value();
 
-    if (zMin < 0)   zMin = 0;
-    if (zMax >= mVolumeData.depth())    zMax = mVolumeData.depth() - 1;
+    //if (zMin < 0)   zMin = 0;
+    //if (zMax >= mVolumeData.depth())    zMax = mVolumeData.depth() - 1;
 
     // selected x,y region + whole z range
     mSVRegion = getViewportRegion3D();
@@ -903,6 +906,11 @@ void AnnotatorWnd::zSliderMoved(int newPos)
     updateImageSlice();
 }
 
+void AnnotatorWnd::updateImageSlice(int)
+{
+    updateImageSlice();
+}
+
 void AnnotatorWnd::updateImageSlice()
 {
     QImage qimg;
@@ -922,7 +930,13 @@ void AnnotatorWnd::updateImageSlice()
             unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
             unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
 
-            overlayRGB( pixPtr, scorePtr, pixPtr, sz, mScoreColor );
+            const unsigned char minThr = ui->spinScoreThrAbove->value();
+            const unsigned char maxThr = ui->spinScoreThrBelow->value();
+
+            if (minThr == 0 && maxThr==255)
+                overlayRGB( pixPtr, scorePtr, pixPtr, sz, mScoreColor );
+            else
+                overlayRGBThresholded( pixPtr, scorePtr, pixPtr, sz, mScoreColor, minThr, maxThr );
         }
     }
 
@@ -1009,14 +1023,24 @@ void AnnotatorWnd::updateImageSlice()
     ui->labelImg->setPixmap( QPixmap::fromImage(qimg) );
 }
 
-void AnnotatorWnd::annotateSupervoxel( const SupervoxelSelection &SV, LabelType label )
+void AnnotatorWnd::annotateSupervoxel( const SupervoxelSelection &SV, LabelType label, bool onlyCurrentSlice )
 {
     if (!SV.valid)
         return;
 
     // then mark it according to the GT
-    for (int i=0; i < SV.pixelList.size(); i++) {
-        mVolumeLabels.data()[ SV.pixelList[i].index ] = label;
+    if (!onlyCurrentSlice)
+    {
+        for (int i=0; i < SV.pixelList.size(); i++) {
+            mVolumeLabels.data()[ SV.pixelList[i].index ] = label;
+        }
+    } else
+    {
+        for (int i=0; i < SV.pixelList.size(); i++)
+        {
+            if ( SV.pixelList[i].coords.z == mCurZSlice )
+                mVolumeLabels.data()[ SV.pixelList[i].index ] = label;
+        }
     }
 
     //// this should go on a status bar, and disappear after a while
@@ -1087,7 +1111,7 @@ void AnnotatorWnd::labelImageMouseReleaseEvent(QMouseEvent * e)
             mSelectedSV.pixelList = pixListResult;
         }
 
-        annotateSupervoxel( mSelectedSV, ui->comboLabel->currentIndex() );
+        annotateSupervoxel( mSelectedSV, ui->comboLabel->currentIndex(), ui->chkOnlyCurSlice->isChecked() );
         mSelectedSV.valid = false;
 
         updateImageSlice();
@@ -1207,7 +1231,7 @@ void AnnotatorWnd::labelImageMouseMoveEvent(QMouseEvent * e)
 
     // if mouse is pressed, then automatically annotate it
     if ( e->buttons() == Qt::LeftButton ) {
-        annotateSupervoxel( mSelectedSV, ui->comboLabel->currentIndex() );
+        annotateSupervoxel( mSelectedSV, ui->comboLabel->currentIndex(), ui->chkOnlyCurSlice->isChecked() );
         mSelectedSV.valid = false;
     }
 

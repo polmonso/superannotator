@@ -86,7 +86,7 @@
           <x>0</x>
           <y>0</y>
           <width>298</width>
-          <height>937</height>
+          <height>1032</height>
          </rect>
         </property>
         <layout class="QHBoxLayout" name="horizontalLayout_12">
@@ -520,7 +520,7 @@
                     </property>
                     <property name="font">
                      <font>
-                      <pointsize>10</pointsize>
+                      <pointsize>9</pointsize>
                      </font>
                     </property>
                     <property name="autoFillBackground">
@@ -560,6 +560,134 @@
              </spacer>
             </item>
             <item>
+             <widget class="QGroupBox" name="groupBox_4">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>95</height>
+               </size>
+              </property>
+              <property name="autoFillBackground">
+               <bool>false</bool>
+              </property>
+              <property name="title">
+               <string>Score visualization</string>
+              </property>
+              <property name="flat">
+               <bool>false</bool>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayout_12">
+               <property name="leftMargin">
+                <number>0</number>
+               </property>
+               <property name="rightMargin">
+                <number>0</number>
+               </property>
+               <item>
+                <layout class="QVBoxLayout" name="verticalLayout_13">
+                 <property name="spacing">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_9" stretch="0">
+                   <property name="sizeConstraint">
+                    <enum>QLayout::SetDefaultConstraint</enum>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_15" stretch="3,1">
+                     <property name="spacing">
+                      <number>0</number>
+                     </property>
+                     <property name="sizeConstraint">
+                      <enum>QLayout::SetDefaultConstraint</enum>
+                     </property>
+                     <property name="topMargin">
+                      <number>0</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <widget class="QLabel" name="label_5">
+                       <property name="text">
+                        <string>Threshold above</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QSpinBox" name="spinScoreThrAbove">
+                       <property name="minimum">
+                        <number>0</number>
+                       </property>
+                       <property name="maximum">
+                        <number>255</number>
+                       </property>
+                       <property name="singleStep">
+                        <number>2</number>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_16" stretch="3,1">
+                   <property name="spacing">
+                    <number>0</number>
+                   </property>
+                   <property name="sizeConstraint">
+                    <enum>QLayout::SetDefaultConstraint</enum>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <widget class="QLabel" name="label_6">
+                     <property name="text">
+                      <string>Threshold below</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="spinScoreThrBelow">
+                     <property name="minimum">
+                      <number>1</number>
+                     </property>
+                     <property name="maximum">
+                      <number>255</number>
+                     </property>
+                     <property name="singleStep">
+                      <number>2</number>
+                     </property>
+                     <property name="value">
+                      <number>255</number>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
              <widget class="QGroupBox" name="groupBox">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -570,7 +698,7 @@
               <property name="minimumSize">
                <size>
                 <width>0</width>
-                <height>150</height>
+                <height>180</height>
                </size>
               </property>
               <property name="autoFillBackground">
@@ -656,6 +784,13 @@
                      <string>Class 2</string>
                     </property>
                    </item>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QCheckBox" name="chkOnlyCurSlice">
+                   <property name="text">
+                    <string>Only current slice</string>
+                   </property>
                   </widget>
                  </item>
                  <item>

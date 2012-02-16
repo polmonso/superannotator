@@ -76,7 +76,7 @@ private:
 
     void statusBarMsg( const QString &str, int timeout = 1200 );
 
-    void annotateSupervoxel( const SupervoxelSelection &SV, LabelType label );
+    void annotateSupervoxel( const SupervoxelSelection &SV, LabelType label, bool onlyCurrentSlice = false );
 
     // scans for plugins and adds them.
     void scanPlugins( const QString &pluginFolder );
@@ -105,6 +105,7 @@ public:
 public slots:
 
     void updateImageSlice();    //updates the label widget with mCurZSlice slice
+    void updateImageSlice(int);    //same as above, discards parameter int
 
     void                    showPreferencesDialog();
 
