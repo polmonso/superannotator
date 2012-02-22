@@ -167,6 +167,39 @@ public:
         updateCache();
     }
 
+    void copyFrom( typename ItkImageType::Pointer img )
+    {
+        typename ItkImageType::IndexType index;
+        index[0] = index[1] = index[2] = 0;
+
+        typename ItkImageType::SizeType imSize = img->GetLargestPossibleRegion().GetSize();
+        mWidth = imSize[0];
+        mHeight = imSize[1];
+        mDepth = imSize[2];
+
+        allocateEmpty();
+        mKeepOnDestr = false;
+        updateCache();
+
+        memcpy( mData, &img->GetPixel( index ), sizeof(T) * numElem() );
+    }
+
+    void copyFrom( const Matrix3D<T> &other )
+    {
+        freeData();
+
+        mWidth = other.width();
+        mHeight = other.height();
+        mDepth = other.depth();
+
+        allocateEmpty();
+        mKeepOnDestr = false;
+
+        updateCache();
+
+        memcpy( mData, other.data(), sizeof(T) * numElem() );
+    }
+
     // sets every element to have value 'val'
     inline void fill( T val ) {
         for (unsigned int i=0; i < mNumElem; i++)
