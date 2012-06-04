@@ -61,7 +61,7 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>178</y>
+          <y>179</y>
           <width>736</width>
           <height>562</height>
          </rect>
@@ -86,7 +86,7 @@
           <x>0</x>
           <y>0</y>
           <width>298</width>
-          <height>1032</height>
+          <height>1027</height>
          </rect>
         </property>
         <layout class="QHBoxLayout" name="horizontalLayout_12">
@@ -953,7 +953,7 @@
      <x>0</x>
      <y>0</y>
      <width>1184</width>
-     <height>26</height>
+     <height>23</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuView">
@@ -972,6 +972,8 @@
     <addaction name="actionOverlay_labels"/>
     <addaction name="separator"/>
     <addaction name="menuOverlay_score_image"/>
+    <addaction name="separator"/>
+    <addaction name="actionDisable_all_overlays"/>
    </widget>
    <widget class="QMenu" name="menuFile">
     <property name="title">
@@ -1000,14 +1002,6 @@
    </attribute>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
-  <action name="actionZoom_fit">
-   <property name="text">
-    <string>Zoom fit</string>
-   </property>
-   <property name="shortcut">
-    <string>F</string>
-   </property>
-  </action>
   <action name="actionOverlay_labels">
    <property name="checkable">
     <bool>true</bool>
@@ -1060,6 +1054,22 @@
   <action name="actionPreferences">
    <property name="text">
     <string>Preferences...</string>
+   </property>
+  </action>
+  <action name="actionDisable_all_overlays">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Disable all overlays</string>
+   </property>
+   <property name="shortcut">
+    <string>Q</string>
+   </property>
+  </action>
+  <action name="actionZoom_fit">
+   <property name="text">
+    <string>Zoom fit</string>
    </property>
   </action>
  </widget>

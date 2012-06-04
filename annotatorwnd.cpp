@@ -179,6 +179,7 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     connect( ui->actionPreferences, SIGNAL(triggered()), this, SLOT(showPreferencesDialog()) );
 
+    connect( ui->actionDisable_all_overlays, SIGNAL(triggered()), this, SLOT(updateImageSlice()) );
     connect( ui->spinScoreThrAbove, SIGNAL(valueChanged(int)), this, SLOT(updateImageSlice(int)) );
     connect( ui->spinScoreThrBelow, SIGNAL(valueChanged(int)), this, SLOT(updateImageSlice(int)) );
 
@@ -916,107 +917,110 @@ void AnnotatorWnd::updateImageSlice()
     QImage qimg;
     mVolumeData.QImageSlice( mCurZSlice, qimg );
 
-    // score overlay?
-    if ( mScoreImageEnabled )
+    if (! ui->actionDisable_all_overlays->isChecked())
     {
-        // sanity check
-        if ( !mScoreImage.isSizeLike( mVolumeData ) ) {
-            qWarning("mScoreImageEnabled == true but score image is not of valid size");
-        }
-        else
+        // score overlay?
+        if ( mScoreImageEnabled )
         {
-            // use as red channel
-            const PixelType *scorePtr = mScoreImage.sliceData( mCurZSlice );
+            // sanity check
+            if ( !mScoreImage.isSizeLike( mVolumeData ) ) {
+                qWarning("mScoreImageEnabled == true but score image is not of valid size");
+            }
+            else
+            {
+                // use as red channel
+                const PixelType *scorePtr = mScoreImage.sliceData( mCurZSlice );
+                unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
+                unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
+
+                const unsigned char minThr = ui->spinScoreThrAbove->value();
+                const unsigned char maxThr = ui->spinScoreThrBelow->value();
+
+                if (minThr == 0 && maxThr==255)
+                    overlayRGB( pixPtr, scorePtr, pixPtr, sz, mScoreColor );
+                else
+                    overlayRGBThresholded( pixPtr, scorePtr, pixPtr, sz, mScoreColor, minThr, maxThr );
+            }
+        }
+
+        // user-overlays
+        for (unsigned int i=0; i < mOverlayMenuActions.size(); i++)
+        {
+            if ( !mOverlayVolumeList[i]->isSizeLike( mVolumeData ) )
+                continue;
+            if ( !mOverlayMenuActions[i]->isChecked() )
+                continue;
+
+            const OverlayType *scorePtr = mOverlayVolumeList[i]->sliceData( mCurZSlice );
             unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
             unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
 
-            const unsigned char minThr = ui->spinScoreThrAbove->value();
-            const unsigned char maxThr = ui->spinScoreThrBelow->value();
-
-            if (minThr == 0 && maxThr==255)
-                overlayRGB( pixPtr, scorePtr, pixPtr, sz, mScoreColor );
-            else
-                overlayRGBThresholded( pixPtr, scorePtr, pixPtr, sz, mScoreColor, minThr, maxThr );
+            overlayRGB( pixPtr, scorePtr, pixPtr, sz, mOverlayColorList.getColor(i) );
         }
-    }
 
-    // user-overlays
-    for (unsigned int i=0; i < mOverlayMenuActions.size(); i++)
-    {
-        if ( !mOverlayVolumeList[i]->isSizeLike( mVolumeData ) )
-            continue;
-        if ( !mOverlayMenuActions[i]->isChecked() )
-            continue;
-
-        const OverlayType *scorePtr = mOverlayVolumeList[i]->sliceData( mCurZSlice );
-        unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
-        unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
-
-        overlayRGB( pixPtr, scorePtr, pixPtr, sz, mOverlayColorList.getColor(i) );
-    }
-
-    // check ground truth slice and draw it
-    if (mOverlayLabelImage)
-    {
-        //int intTransp = 255*mOverlayLabelImageTransparency;
-        int floatTransp = 256 * mOverlayLabelImageTransparency;
-        int floatTranspInv = 256 - floatTransp;
-
-        const LabelType *lblPtr = mVolumeLabels.sliceData( mCurZSlice );
-        unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
-
-        unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
-        int maxLabel = (int) mLblColorList.count();
-
-        for (unsigned int i=0; i < sz; i++)
+        // check ground truth slice and draw it
+        if (mOverlayLabelImage)
         {
-            if ( lblPtr[i] == 0 )
-                continue;   // unlabeled, we don't care
+            //int intTransp = 255*mOverlayLabelImageTransparency;
+            int floatTransp = 256 * mOverlayLabelImageTransparency;
+            int floatTranspInv = 256 - floatTransp;
 
-            if (lblPtr[i] > maxLabel) {
-                qDebug("Label exceed possible colors: %d", (int)lblPtr[i]);
-                continue;
+            const LabelType *lblPtr = mVolumeLabels.sliceData( mCurZSlice );
+            unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
+
+            unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
+            int maxLabel = (int) mLblColorList.count();
+
+            for (unsigned int i=0; i < sz; i++)
+            {
+                if ( lblPtr[i] == 0 )
+                    continue;   // unlabeled, we don't care
+
+                if (lblPtr[i] > maxLabel) {
+                    qDebug("Label exceed possible colors: %d", (int)lblPtr[i]);
+                    continue;
+                }
+
+                int vv = (floatTransp * (pixPtr[i] & 0xFF))/256;
+
+                const QColor &color = mLblColorList.getColor(lblPtr[i] - 1);
+
+                int g = vv + (floatTranspInv * color.green()) / 256;
+                int b = vv + (floatTranspInv * color.blue()) / 256;
+                int r = vv + (floatTranspInv * color.red()) / 256;
+
+                QColor c = QColor::fromRgb( r,g,b );
+
+                pixPtr[i] = c.rgb();
             }
-
-            int vv = (floatTransp * (pixPtr[i] & 0xFF))/256;
-
-            const QColor &color = mLblColorList.getColor(lblPtr[i] - 1);
-
-            int g = vv + (floatTranspInv * color.green()) / 256;
-            int b = vv + (floatTranspInv * color.blue()) / 256;
-            int r = vv + (floatTranspInv * color.red()) / 256;
-
-            QColor c = QColor::fromRgb( r,g,b );
-
-            pixPtr[i] = c.rgb();
         }
-    }
 
-    if (mSelectedSV.valid)  //if selection is valid, draw highlight
-    {
-        const qreal opacity = 0.6;
-        const qreal invOpacity = 0.99 - opacity;
-
-        const qreal cRd = mSelectionColor.redF() * opacity;
-        const qreal cGr = mSelectionColor.greenF() * opacity;
-        const qreal cBl = mSelectionColor.blueF() * opacity;
-
-        for (int i=0; i < mSelectedSV.pixelList.size(); i++)
+        if (mSelectedSV.valid)  //if selection is valid, draw highlight
         {
-            unsigned int z = mSelectedSV.pixelList[i].coords.z;
-            if ( mCurZSlice != z )
-                continue;
+            const qreal opacity = 0.6;
+            const qreal invOpacity = 0.99 - opacity;
 
-            unsigned int x = mSelectedSV.pixelList[i].coords.x;
-            unsigned int y = mSelectedSV.pixelList[i].coords.y;
+            const qreal cRd = mSelectionColor.redF() * opacity;
+            const qreal cGr = mSelectionColor.greenF() * opacity;
+            const qreal cBl = mSelectionColor.blueF() * opacity;
 
-            QColor pixColor = QColor::fromRgb( qimg.pixel(x, y) );
+            for (int i=0; i < mSelectedSV.pixelList.size(); i++)
+            {
+                unsigned int z = mSelectedSV.pixelList[i].coords.z;
+                if ( mCurZSlice != z )
+                    continue;
 
-            qreal r = pixColor.redF() * invOpacity + cRd;
-            qreal g = pixColor.greenF() * invOpacity + cGr;
-            qreal b = pixColor.blueF() * invOpacity + cBl;
+                unsigned int x = mSelectedSV.pixelList[i].coords.x;
+                unsigned int y = mSelectedSV.pixelList[i].coords.y;
 
-            qimg.setPixel( x, y, QColor::fromRgbF( r, g, b ).rgb() );
+                QColor pixColor = QColor::fromRgb( qimg.pixel(x, y) );
+
+                qreal r = pixColor.redF() * invOpacity + cRd;
+                qreal g = pixColor.greenF() * invOpacity + cGr;
+                qreal b = pixColor.blueF() * invOpacity + cBl;
+
+                qimg.setPixel( x, y, QColor::fromRgbF( r, g, b ).rgb() );
+            }
         }
     }
 

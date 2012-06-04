@@ -35,6 +35,9 @@ public slots:
     void listClickedSignal(QModelIndex mIdx);
     void butLabelRegionClicked();
 
+protected:
+    void keyReleaseEvent(QKeyEvent *);
+
 signals:
     // this is emitted when the current region selection is changed
     void currentRegionChanged(int newRegionIdx);

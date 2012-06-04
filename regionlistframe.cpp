@@ -1,6 +1,7 @@
 #include "regionlistframe.h"
 #include "ui_regionlistframe.h"
 
+#include <QKeyEvent>
 #include <QRect>
 #include <QApplication>
 #include <QDesktopWidget>
@@ -25,6 +26,15 @@ RegionListFrame::RegionListFrame(QWidget *parent, AnnotatorWnd *annWnd) :
     connect( ui->butSave, SIGNAL(clicked()), this, SLOT(saveAsClicked()) );
     connect( ui->listWidget, SIGNAL(clicked(QModelIndex)), this, SLOT(listClickedSignal(QModelIndex)) );
     connect( ui->butLabelRegion, SIGNAL(clicked()), this, SLOT(butLabelRegionClicked()) );
+}
+
+void RegionListFrame::keyReleaseEvent(QKeyEvent *evt)
+{
+    int key = evt->key();
+    if ((key >= '0') && (key < '3'))
+    {
+        emit labelRegion( ui->listWidget->currentRow() , key - '0' );
+    }
 }
 
 void RegionListFrame::butLabelRegionClicked()

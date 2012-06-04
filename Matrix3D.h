@@ -20,17 +20,17 @@
 template<typename T>
 class Matrix3D
 {
-private:    //disable copy operator, at least for now
-    Matrix3D( const Matrix3D& rhs );
-    Matrix3D& operator=( const Matrix3D& rhs );
-
+private:
     typedef itk::Image<T, 3> ItkImageType;
     typedef unsigned int     DefaultLabelType;
-
+    
+    Matrix3D( const Matrix3D<T>& rhs );
+	Matrix3D<T>& operator=( const Matrix3D<T>& rhs );
+	
 public:
     typedef T DataType;
     Matrix3D() { mData = 0; mWidth = mHeight = mDepth = 0; updateCache(); mKeepOnDestr = false; }
-
+    
     // empty, just garbage data
     Matrix3D( unsigned int w, unsigned int h, unsigned int d ) {
         mData = 0; mKeepOnDestr = false;

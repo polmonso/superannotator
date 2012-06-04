@@ -49,7 +49,7 @@ QMAKE_CXXFLAGS += -fopenmp
 QMAKE_LFLAGS += -fopenmp
 
 # Replace to point to ITK
-ITKPATH = /data/phd/software/itk/compile/InsightToolkit-3.20.0
+ITKPATH = /home/cjbecker/filer/toolkits/InsightToolkit-3.20.0
 ITKPATH_BUILD = $$ITKPATH/build
 
 # Replace to point to SLIC path
