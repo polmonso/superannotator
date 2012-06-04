@@ -40,10 +40,16 @@ private:
 
 protected:
     void closeEvent(QCloseEvent *);
+    bool loadAnnotation(const QString& fileName);
+    bool saveAnnotation(const QString& fileName);
 
 private:
     Ui::AnnotatorWnd *ui;
     int mCurZSlice;
+
+    // if label file shoul be saved on exit, and which would be the path
+    bool        mSaveLabelsOnExit;
+    QString     mSaveLabelsOnExitPath;
 
     QString mFileTypeFilter;
 

@@ -25,6 +25,7 @@
 #include <QColorDialog>
 
 #include "preferencesdialog.h"
+#include "synapseresamplerdialog.h"
 
 /** ---- these variables here are a bit dirty, but it is to avoid putting them in the .h file
  ** even though it prevents multiple instances
@@ -76,6 +77,7 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
     ui->setupUi(this);
 
     mLabelListData.pFrame = 0;
+    mSaveLabelsOnExit = false;
 
     // settings
     m_sSettingsFile = QApplication::applicationDirPath() + "/settings.ini";
@@ -94,7 +96,17 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     ui->centralWidget->setLayout( ui->horizontalLayout );
 
+
+    qDebug("Args: %d", (int)qApp->arguments().size());
+    for (unsigned i=0; i < qApp->arguments().size(); i++)
+        qDebug("Arg %d: %s", i, qApp->arguments()[i].toStdString().c_str());
+
     // ask user to open raw file
+    std::string stdFName;
+    if (qApp->arguments().size() >= 2 && QFileInfo( qApp->arguments().at(1) ).exists())
+        stdFName = qApp->arguments().at(1).toStdString();
+
+    if (stdFName.empty())
     {
         QString fileName = QFileDialog::getOpenFileName( 0, "Load image", mSettingsData.loadPathVolume, mFileTypeFilter );
 
@@ -103,19 +115,44 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
             return;
         }
 
-        std::string stdFName = fileName.toLocal8Bit().constData();
+        stdFName = fileName.toLocal8Bit().constData();
+        mSettingsData.loadPathVolume = QFileInfo( QString::fromStdString( stdFName) ).absolutePath();
+    }
 
-        try {
-            mVolumeData.load( stdFName );
-        } catch (std::exception &e)
+    try {
+        mVolumeData.load( stdFName );
+    } catch (std::exception &e)
+    {
+        QMessageBox::critical( this, "Cannot open image file", "Could not open the specified image, quitting.." );
+        QTimer::singleShot(1, qApp, SLOT(quit()));
+        return;
+    }
+    this->saveSettings();
+
+    // allocate label volume (per pixel)
+    mVolumeLabels.reallocSizeLike( mVolumeData );
+    mVolumeLabels.fill(0);
+
+    /** Parse remaining possible args **/
+    if (qApp->arguments().size() >= 3)
+    {
+        if ( loadAnnotation( qApp->arguments().at(2) ) )
         {
-            QMessageBox::critical( this, "Cannot open image file", "Could not open the specified image, quitting.." );
-            QTimer::singleShot(1, qApp, SLOT(quit()));
-            return;
+            if ( qApp->arguments().size() >= 5 && (qApp->arguments().at(4) == "yes") )
+            {
+                mSaveLabelsOnExit = true;
+                mSaveLabelsOnExitPath = qApp->arguments().at(2);
+            }
         }
+    }
 
-        mSettingsData.loadPathVolume = QFileInfo( fileName ).absolutePath();
-        this->saveSettings();
+    mCurZSlice = 0;
+    if (qApp->arguments().size() >= 4) {
+        bool ok = false;
+        unsigned int z = qApp->arguments().at(3).toUInt(&ok);
+
+        if (ok)
+            mCurZSlice = z;
     }
 
 
@@ -126,25 +163,14 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
     //mVolumeData.load("/data/phd/twoexamples/00147.tif");
     qDebug("Volume size: %dx%dx%d\n", mVolumeData.width(), mVolumeData.height(), mVolumeData.depth());
 
-    // allocate label volume (per pixel)
-    mVolumeLabels.reallocSizeLike( mVolumeData );
-    mVolumeLabels.fill(0);
-
     ui->zSlider->setMinimum(0);
     ui->zSlider->setMaximum( mVolumeData.depth()-1 );
     ui->zSlider->setSingleStep(1);
     ui->zSlider->setPageStep(10);
+    ui->zSlider->setValue( mCurZSlice );
 
-    mCurZSlice = 0;
-
-
-    ui->scrollArea->setWidget( ui->labelImg );
-    ui->labelImg->setScrollArea( ui->scrollArea );;
-    ui->labelImg->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
 
     updateImageSlice();
-    ui->labelImg->resize( ui->labelImg->pixmap()->size() );
-    ui->labelImg->setScaledContents(false);
 
     // events
     connect(ui->labelImg,SIGNAL(wheelEventSignal(QWheelEvent*)),this,SLOT(labelImageWheelEvent(QWheelEvent*)));
@@ -459,13 +485,9 @@ void AnnotatorWnd::actionEnableScoreImageTriggered()
     updateImageSlice();
 }
 
-void AnnotatorWnd::actionSaveAnnotTriggered()
+bool AnnotatorWnd::saveAnnotation(const QString& fileName_)
 {
-    QString fileName = QFileDialog::getSaveFileName( this, "Save annotation", mSettingsData.savePath, mFileTypeFilter );
-
-    if (fileName.isEmpty())
-        return;
-
+    QString fileName(fileName_);
     if (!fileName.endsWith(".tif"))
         fileName += ".tif";
 
@@ -473,13 +495,55 @@ void AnnotatorWnd::actionSaveAnnotTriggered()
 
     std::string stdFName = fileName.toLocal8Bit().constData();
 
-    if (!mVolumeLabels.save( stdFName ))
+    if (!mVolumeLabels.save( stdFName )) {
         statusBarMsg(QString("Error saving ") + fileName, 0 );
+        return false;
+    }
     else
         statusBarMsg("Annotation saved successfully.");
 
+    return true;
+}
+
+void AnnotatorWnd::actionSaveAnnotTriggered()
+{
+    QString fileName = QFileDialog::getSaveFileName( this, "Save annotation", mSettingsData.savePath, mFileTypeFilter );
+
+    if (fileName.isEmpty())
+        return;
+
+    if (!saveAnnotation(fileName))
+        return;
+
     mSettingsData.savePath = QFileInfo(fileName).absolutePath();
     this->saveSettings();
+}
+
+bool AnnotatorWnd::loadAnnotation(const QString& fileName)
+{
+    qDebug() << fileName;
+
+    std::string stdFName = fileName.toLocal8Bit().constData();
+
+    if (!mVolumeLabels.load( stdFName )) {
+        QMessageBox::critical(this, "Cannot open file", QString("%1 could not be read.").arg(fileName));
+        return false;
+    }
+
+
+    if ( (mVolumeLabels.width() != mVolumeData.width()) || (mVolumeLabels.height() != mVolumeData.height()) || (mVolumeLabels.depth() != mVolumeData.depth()) )
+    {
+        QMessageBox::critical(this, "Dimensions do not match", "Annotation volume does not match original volume dimensions. Re-setting labels.");
+        mVolumeLabels.reallocSizeLike( mVolumeData );
+        mVolumeLabels.fill(0);
+        updateImageSlice();
+        return false;
+    }
+
+    updateImageSlice();
+    statusBarMsg("Annotation loaded successfully.");
+
+    return true;
 }
 
 void AnnotatorWnd::actionLoadAnnotTriggered()
@@ -489,25 +553,8 @@ void AnnotatorWnd::actionLoadAnnotTriggered()
     if (fileName.isEmpty())
         return;
 
-    qDebug() << fileName;
-
-    std::string stdFName = fileName.toLocal8Bit().constData();
-
-    if (!mVolumeLabels.load( stdFName ))
-        QMessageBox::critical(this, "Cannot open file", QString("%1 could not be read.").arg(fileName));
-
-
-    if ( (mVolumeLabels.width() != mVolumeData.width()) || (mVolumeLabels.height() != mVolumeData.height()) || (mVolumeLabels.depth() != mVolumeData.depth()) )
-    {
-        QMessageBox::critical(this, "Dimensions do not match", "Annotation volume does not match original volume dimensions. Re-setting labels.");
-        mVolumeLabels.reallocSizeLike( mVolumeData );
-        mVolumeLabels.fill(0);
-        updateImageSlice();
+    if (!loadAnnotation(fileName))
         return;
-    }
-
-    updateImageSlice();
-    statusBarMsg("Annotation loaded successfully.");
 
     mSettingsData.loadPath = QFileInfo(fileName).absolutePath();
     this->saveSettings();
@@ -936,7 +983,7 @@ void AnnotatorWnd::updateImageSlice()
             if (minThr == 0 && maxThr==255)
                 overlayRGB( pixPtr, scorePtr, pixPtr, sz, mScoreColor );
             else
-                overlayRGBThresholded( pixPtr, scorePtr, pixPtr, sz, mScoreColor, minThr, maxThr );
+                overlayRGBThresholded( pixPtr, scorePtr, pixPtr, sz, mScoreColor, minThr, maxThr, ui->chkHardThreshold->isChecked() );
         }
     }
 
@@ -1020,7 +1067,7 @@ void AnnotatorWnd::updateImageSlice()
         }
     }
 
-    ui->labelImg->setPixmap( QPixmap::fromImage(qimg) );
+    ui->labelImg->setImage( qimg );
 }
 
 void AnnotatorWnd::annotateSupervoxel( const SupervoxelSelection &SV, LabelType label, bool onlyCurrentSlice )
@@ -1053,6 +1100,35 @@ void AnnotatorWnd::annotateSupervoxel( const SupervoxelSelection &SV, LabelType 
 void AnnotatorWnd::labelImageMouseReleaseEvent(QMouseEvent * e)
 {
     QPoint pt = ui->labelImg->screenToImage( e->pos() );
+
+    if ( (e->modifiers() & Qt::ShiftModifier) && (e->modifiers() & Qt::ControlModifier) )
+    {
+        static SynapseResamplerDialog *dialog = 0;
+        if (dialog == 0)
+            dialog = new SynapseResamplerDialog(this);
+
+        QPoint pt = ui->labelImg->screenToImage( e->pos() );
+        int x = pt.x();
+        int y = pt.y();
+
+        bool invalid = false;
+        if (x < 0)  invalid = true;
+        if (y < 0)  invalid = true;
+        if (x >= mVolumeData.width())   invalid = true;
+        if (y >= mVolumeData.height())  invalid = true;
+
+        if (invalid)
+            return;
+
+        dialog->setAuxData( &mVolumeData, &mVolumeLabels );
+        dialog->setVisible(true);
+        dialog->mainWindowClicked( pt.x(), pt.y(), mCurZSlice );
+
+        updateImageSlice();
+
+
+        return;
+    }
 
     // select supervoxel for labeling?
     if ( e->button() == Qt::LeftButton )
@@ -1279,9 +1355,9 @@ void AnnotatorWnd::labelImageWheelEvent(QWheelEvent * e)
             const double zoomFactor = 1/0.9;
             double toZoom = zoomFactor;
             if (e->delta() < 0)
-                toZoom = 1/toZoom;
+                toZoom = 1.0/toZoom;
 
-            ui->labelImg->scaleImage( toZoom );
+            ui->labelImg->scale( toZoom );
             statusBarMsg( QString().sprintf("Zoom: %.1f", ui->labelImg->scaleFactor()) );
 
             break;
@@ -1292,13 +1368,11 @@ void AnnotatorWnd::labelImageWheelEvent(QWheelEvent * e)
         {
             const int toScroll = -e->delta()/4;
 
-            QScrollBar *sBar = 0;
             if (op == opHScroll)
-                sBar = ui->scrollArea->horizontalScrollBar();
+                ui->labelImg->pan( toScroll, 0 );
             else
-                sBar = ui->scrollArea->verticalScrollBar();
+                ui->labelImg->pan( 0, toScroll );
 
-            sBar->setValue( sBar->value() + toScroll );
             break;
         }
 
@@ -1324,6 +1398,9 @@ AnnotatorWnd::~AnnotatorWnd()
 
 void AnnotatorWnd::closeEvent(QCloseEvent *evt)
 {
+    if (mSaveLabelsOnExit)
+        saveAnnotation( mSaveLabelsOnExitPath );
+
     qApp->quit();
     QMainWindow::closeEvent(evt);
 }

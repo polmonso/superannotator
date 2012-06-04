@@ -16,7 +16,9 @@ SOURCES += main.cpp\
     textinfodialog.cpp \
     regionlistframe.cpp \
     PluginServices.cpp \
-    preferencesdialog.cpp
+    preferencesdialog.cpp \
+    synapseresamplerdialog.cpp \
+    mygraphicsview.cpp
 
 HEADERS  += annotatorwnd.h \
     qlabelimage.h \
@@ -33,12 +35,15 @@ HEADERS  += annotatorwnd.h \
     CommonTypes.h \
     PluginServices.h \
     MiscUtils.h \
-    preferencesdialog.h
+    preferencesdialog.h \
+    synapseresamplerdialog.h \
+    mygraphicsview.h
 
 FORMS    += annotatorwnd.ui \
     textinfodialog.ui \
     regionlistframe.ui \
-    preferencesdialog.ui
+    preferencesdialog.ui \
+    synapseresamplerdialog.ui
 
 # -- This is a neat trick to export symbols from the executable
 #  so the loaded plugin can link to them
@@ -148,6 +153,13 @@ LIBS += -luuid
 
 OTHER_FILES += \
     TODO.txt
+
+
+
+
+
+
+
 
 
 
