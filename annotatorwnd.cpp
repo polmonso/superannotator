@@ -961,6 +961,7 @@ void AnnotatorWnd::updateImageSlice(int)
 void AnnotatorWnd::updateImageSlice()
 {
     QImage qimg;
+
     mVolumeData.QImageSlice( mCurZSlice, qimg );
 
     // score overlay?

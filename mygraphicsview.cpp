@@ -9,10 +9,10 @@
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QDebug>
+#include <QTime>
 
 void MyGraphicsView::setImage( const QImage &img, const QRect &updateRect )
 {
-//    return;
     const bool firstTime = mScene->items().size() == 0;
 
     //Set-up the view if it is the 1st time
@@ -24,9 +24,8 @@ void MyGraphicsView::setImage( const QImage &img, const QRect &updateRect )
         mScene->addPixmap( QPixmap() );
     }
 
-    mPixmap.convertFromImage( img, Qt::ThresholdDither );
 
-    ((QGraphicsPixmapItem *) mScene->items()[0])->setPixmap( mPixmap );
+    ((QGraphicsPixmapItem *) mScene->items()[0])->setPixmap( QPixmap::fromImage( img ) );
 
     //qDebug("Valid: %d", (int)updateRect.isValid());
 
@@ -35,6 +34,9 @@ void MyGraphicsView::setImage( const QImage &img, const QRect &updateRect )
         toUpdate = updateRect;
     else
         toUpdate = img.rect();
+
+    //toUpdate.setHeight(100);
+    //toUpdate.setWidth(100);
 
     QRect thisToScreen = mapFromScene( toUpdate ).boundingRect();
 
@@ -57,7 +59,7 @@ void MyGraphicsView::setImage( const QImage &img, const QRect &updateRect )
 MyGraphicsView::MyGraphicsView(QWidget* parent) : QGraphicsView(parent)
 {
     mScaleFactor = 1.0;
-    setZoomLimits( 0.1, 10 );
+    setZoomLimits( 0.1, 7 );
 
     setRenderHints(0);
     //setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
@@ -65,6 +67,8 @@ MyGraphicsView::MyGraphicsView(QWidget* parent) : QGraphicsView(parent)
     //Set-up the scene
     mScene = new QGraphicsScene(this);
     setScene(mScene);
+
+    this->setCacheMode( QGraphicsView::CacheNone );
 
     this->setViewportUpdateMode( QGraphicsView::NoViewportUpdate);
 }
@@ -246,10 +250,13 @@ void MyGraphicsView::resizeEvent(QResizeEvent* event) {
 
 QRect MyGraphicsView::getViewableRect() const
 {
+    if (mScene->items().size() == 0)
+        return QRect();
+
     QRect r =
             mapToScene( viewport()->geometry() ).boundingRect().toRect();
 
-    qDebug() << "Rect " << r;
+    //qDebug() << "Rect " << r;
 
     if ( r.top() < 0 )
         r.setTop(0);
@@ -258,9 +265,9 @@ QRect MyGraphicsView::getViewableRect() const
         r.setLeft(0);
 
     // get only intersection between pixmap and region
-    r = r.intersect( mPixmap.rect() );
+    r = r.intersect( mScene->items()[0]->boundingRect().toRect() );
 
-    qDebug() << "Rect2 " << r;
+    //qDebug() << "Rect2 " << r;
 
     return r;
 }
