@@ -25,8 +25,6 @@
 #include <QColorDialog>
 
 #include "preferencesdialog.h"
-#include "synapseresamplerdialog.h"
-
 /** ---- these variables here are a bit dirty, but it is to avoid putting them in the .h file
  ** even though it prevents multiple instances
  */
@@ -1101,35 +1099,6 @@ void AnnotatorWnd::annotateSupervoxel( const SupervoxelSelection &SV, LabelType 
 void AnnotatorWnd::labelImageMouseReleaseEvent(QMouseEvent * e)
 {
     QPoint pt = ui->labelImg->screenToImage( e->pos() );
-
-    if ( (e->modifiers() & Qt::ShiftModifier) && (e->modifiers() & Qt::ControlModifier) )
-    {
-        static SynapseResamplerDialog *dialog = 0;
-        if (dialog == 0)
-            dialog = new SynapseResamplerDialog(this);
-
-        QPoint pt = ui->labelImg->screenToImage( e->pos() );
-        int x = pt.x();
-        int y = pt.y();
-
-        bool invalid = false;
-        if (x < 0)  invalid = true;
-        if (y < 0)  invalid = true;
-        if (x >= mVolumeData.width())   invalid = true;
-        if (y >= mVolumeData.height())  invalid = true;
-
-        if (invalid)
-            return;
-
-        dialog->setAuxData( &mVolumeData, &mVolumeLabels );
-        dialog->setVisible(true);
-        dialog->mainWindowClicked( pt.x(), pt.y(), mCurZSlice );
-
-        updateImageSlice();
-
-
-        return;
-    }
 
     // select supervoxel for labeling?
     if ( e->button() == Qt::LeftButton )
