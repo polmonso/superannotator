@@ -44,8 +44,10 @@ FORMS    += annotatorwnd.ui \
 
 # -- This is a neat trick to export symbols from the executable
 #  so the loaded plugin can link to them
-QMAKE_CXXFLAGS += -fvisibility=hidden
-QMAKE_LFLAGS += -fvisibility=hidden -Wl,--export-dynamic
+unix {
+    QMAKE_CXXFLAGS += -fvisibility=hidden
+    QMAKE_LFLAGS += -fvisibility=hidden -Wl,--export-dynamic
+}
 
 QMAKE_CXXFLAGS += -fopenmp
 QMAKE_LFLAGS += -fopenmp
