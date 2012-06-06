@@ -56,9 +56,6 @@ struct
 } static mLabelListData;
 
 
-// maximum size for SV region in voxels, to avoid memory problems
-static unsigned int mMaxSVRegionVoxels;
-
 static PluginServicesList  mPluginServList;
 
 // list of overlay volumes, we use ptrs because it has no copy xtor
@@ -86,9 +83,6 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
 
     mScoreImageEnabled = false;
-
-    // this should be configurable
-    mMaxSVRegionVoxels = 200U*200U*200U;
 
     mSelectedSV.valid = false;  // no valid selection so far
 
@@ -269,11 +263,14 @@ void AnnotatorWnd::showPreferencesDialog()
     PreferencesDialog dialog(this);
 
     dialog.setFijiExePath( mSettingsData.fijiExePath );
+    dialog.setMaxVoxelsForSV( mSettingsData.maxVoxForSVox );
 
     if (dialog.exec() == QDialog::Rejected)
         return;
 
     mSettingsData.fijiExePath = dialog.getFijiExePath();
+    mSettingsData.maxVoxForSVox = dialog.getMaxVoxelsForSV();
+
     this->saveSettings();
 }
 
@@ -409,6 +406,7 @@ void AnnotatorWnd::loadSettings()
     mSettingsData.loadPathScores = settings.value("loadPathScores", ".").toString();
     mSettingsData.loadPathVolume = settings.value("loadPathVolume", ".").toString();
     mSettingsData.fijiExePath = settings.value("fijiExePath", "Not set").toString();
+    mSettingsData.maxVoxForSVox = settings.value("maxVoxForSVox", 28000000).toUInt();
 
     ui->spinSVCubeness->setValue( settings.value("spinSVCubeness", 40).toInt() );
     ui->spinSVSeed->setValue( settings.value("spinSVSeed", 20).toInt() );
@@ -427,6 +425,7 @@ void AnnotatorWnd::saveSettings()
     settings.setValue("spinSVSeed", ui->spinSVSeed->value());
     settings.setValue( "spinSVZ", ui->spinSVZ->value() );
     settings.setValue( "fijiExePath", mSettingsData.fijiExePath );
+    settings.setValue( "maxVoxForSVox", mSettingsData.maxVoxForSVox );
 
     qDebug() << m_sSettingsFile;
 }
@@ -586,12 +585,31 @@ void AnnotatorWnd::genSupervoxelClicked()
     // selected x,y region + whole z range
     mSVRegion = getViewportRegion3D();
 
-    if ( mSVRegion.totalVoxels() > mMaxSVRegionVoxels )
+    if ( mSVRegion.totalVoxels() > mSettingsData.maxVoxForSVox )
     {
-        QMessageBox::critical( this, "Region too large", QString("The current region contains %1 supervoxels, exceeding the limit of %2.").arg(mSVRegion.totalVoxels()).arg(mMaxSVRegionVoxels) );
+        QMessageBox::critical( this, "Region too large",
+                               QString("The current region contains %1 supervoxels, exceeding the limit of %2."
+                                       "You can change this limit in the preferences dialog.").arg(mSVRegion.totalVoxels()).arg(mSettingsData.maxVoxForSVox) );
         mSVRegion.valid = false;
         updateImageSlice();
         return;
+    }
+
+    // do checking on cubeness and seed to avoid crashing while running supervoxel code
+    {
+        const unsigned minLength = mSVRegion.minSideLength();
+
+        const unsigned maxSeed = ceil( minLength / 1.5 );
+
+        qDebug("Min seed: %d", (int)maxSeed);
+
+        if ( ui->spinSVSeed->value() > maxSeed )
+        {
+             QMessageBox::critical( this, "Seed too large", QString("Selected seed size is too large. For this region it has to be at most %1.").arg(maxSeed) );
+             mSVRegion.valid = false;
+             updateImageSlice();
+             return;
+        }
     }
 
     //qDebug("Region: %d %d %d %d", mSVRegion.corner.x, mSVRegion.corner.y,

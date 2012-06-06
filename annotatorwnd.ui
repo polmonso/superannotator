@@ -221,7 +221,7 @@
                    <item>
                     <widget class="QSpinBox" name="spinSVZ">
                      <property name="sizePolicy">
-                      <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+                      <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                        <horstretch>0</horstretch>
                        <verstretch>0</verstretch>
                       </sizepolicy>
@@ -230,7 +230,7 @@
                       <string> z-steps</string>
                      </property>
                      <property name="prefix">
-                      <string/>
+                      <string>±</string>
                      </property>
                      <property name="minimum">
                       <number>20</number>

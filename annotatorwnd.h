@@ -33,6 +33,8 @@ private:
         QString loadPathScores; // for score volume
         QString loadPathVolume; // for main volume
         QString fijiExePath;
+
+        unsigned maxVoxForSVox;
     } mSettingsData;
 
     void loadSettings();
