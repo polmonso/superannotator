@@ -46,6 +46,25 @@ struct Region3D
         valid = true;
     }
 
+    // returns the length of the minimum side of the cube
+    unsigned int minSideLength() const
+    {
+        unsigned int m = size.x;
+        if (m > size.y) m = size.y;
+        if (m > size.z) m = size.z;
+
+        return m;
+    }
+
+    unsigned int maxSideLength() const
+    {
+        unsigned int m = size.x;
+        if (m < size.y) m = size.y;
+        if (m < size.z) m = size.z;
+
+        return m;
+    }
+
     // use this region to crop a volume
     template<typename T>
     void useToCrop( const Matrix3D<T> &whole, Matrix3D<T> *cropped ) const
