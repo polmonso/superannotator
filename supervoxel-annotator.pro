@@ -17,7 +17,6 @@ SOURCES += main.cpp\
     regionlistframe.cpp \
     PluginServices.cpp \
     preferencesdialog.cpp \
-    synapseresamplerdialog.cpp \
     mygraphicsview.cpp
 
 HEADERS  += annotatorwnd.h \
@@ -36,25 +35,31 @@ HEADERS  += annotatorwnd.h \
     PluginServices.h \
     MiscUtils.h \
     preferencesdialog.h \
-    synapseresamplerdialog.h \
     mygraphicsview.h
 
 FORMS    += annotatorwnd.ui \
     textinfodialog.ui \
     regionlistframe.ui \
-    preferencesdialog.ui \
-    synapseresamplerdialog.ui
+    preferencesdialog.ui
 
 # -- This is a neat trick to export symbols from the executable
 #  so the loaded plugin can link to them
-QMAKE_CXXFLAGS += -fvisibility=hidden
-QMAKE_LFLAGS += -fvisibility=hidden -Wl,--export-dynamic
+unix {
+    QMAKE_CXXFLAGS += -fvisibility=hidden
+    QMAKE_LFLAGS += -fvisibility=hidden -Wl,--export-dynamic
+}
 
 QMAKE_CXXFLAGS += -fopenmp
 QMAKE_LFLAGS += -fopenmp
 
 # Replace to point to ITK
-ITKPATH = /data/phd/software/itk/compile/InsightToolkit-3.20.0
+win32 {
+  ITKPATH = C:/dev/InsightToolkit-3.20.1
+}
+
+unix {
+  ITKPATH = /data/phd/software/itk/compile/InsightToolkit-3.20.0
+}
 ITKPATH_BUILD = $$ITKPATH/build
 
 # Replace to point to SLIC path
@@ -148,8 +153,19 @@ INCLUDEPATH += $$ITKPATH_BUILD/Code/Algorithms
 INCLUDEPATH += $$ITKPATH/
 INCLUDEPATH += $$ITKPATH_BUILD/
 
-LIBS += -L$$ITKPATH_BUILD/bin -lITKIO -lITKStatistics -lITKNrrdIO -litkgdcm -litkjpeg12 -litkjpeg16 -litkopenjpeg -litkpng -litktiff -litkjpeg8 -lITKSpatialObject -lITKMetaIO -lITKDICOMParser -lITKEXPAT -lITKniftiio -lITKznz -litkzlib -lITKCommon -litksys -litkvnl_inst -litkvnl_algo -litkvnl -litkvcl -litkv3p_lsqr -lpthread -lm -ldl -litkNetlibSlatec -litkv3p_netlib
+LIBS += -L$$ITKPATH_BUILD/bin -lITKIO -lITKStatistics -lITKNrrdIO -litkgdcm -litkjpeg12 -litkjpeg16 -litkopenjpeg -litkpng -litktiff -litkjpeg8 -lITKSpatialObject -lITKMetaIO -lITKDICOMParser -lITKEXPAT -lITKniftiio -lITKznz -litkzlib -lITKCommon -litksys -litkvnl_inst -litkvnl_algo -litkvnl -litkvcl -litkv3p_lsqr -lpthread -lm -litkNetlibSlatec -litkv3p_netlib
+
+unix {
+ LIBS += -ldl
+}
+
+win32 {
+ LIBS += -lsnmpapi -lrpcrt4 -lws2_32 -lgdi32
+}
+
 LIBS += -luuid
+
+message($$INCLUDEPATH)
 
 OTHER_FILES += \
     TODO.txt
