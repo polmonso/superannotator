@@ -233,6 +233,7 @@ void MyGraphicsView::pan( double x, double y )
 {
     QPointF delta( x, y );
     SetCenter(GetCenter() + delta);
+    viewport()->update();
 }
 
 /**
