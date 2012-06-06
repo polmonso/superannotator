@@ -25,7 +25,6 @@
 #include <QColorDialog>
 
 #include "preferencesdialog.h"
-
 /** ---- these variables here are a bit dirty, but it is to avoid putting them in the .h file
  ** even though it prevents multiple instances
  */
@@ -57,9 +56,6 @@ struct
 } static mLabelListData;
 
 
-// maximum size for SV region in voxels, to avoid memory problems
-static unsigned int mMaxSVRegionVoxels;
-
 static PluginServicesList  mPluginServList;
 
 // list of overlay volumes, we use ptrs because it has no copy xtor
@@ -76,6 +72,7 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
     ui->setupUi(this);
 
     mLabelListData.pFrame = 0;
+    mSaveLabelsOnExit = false;
 
     // settings
     m_sSettingsFile = QApplication::applicationDirPath() + "/settings.ini";
@@ -87,14 +84,21 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     mScoreImageEnabled = false;
 
-    // this should be configurable
-    mMaxSVRegionVoxels = 200U*200U*200U;
-
     mSelectedSV.valid = false;  // no valid selection so far
 
     ui->centralWidget->setLayout( ui->horizontalLayout );
 
+
+    qDebug("Args: %d", (int)qApp->arguments().size());
+    for (unsigned i=0; i < qApp->arguments().size(); i++)
+        qDebug("Arg %d: %s", i, qApp->arguments()[i].toStdString().c_str());
+
     // ask user to open raw file
+    std::string stdFName;
+    if (qApp->arguments().size() >= 2 && QFileInfo( qApp->arguments().at(1) ).exists())
+        stdFName = qApp->arguments().at(1).toStdString();
+
+    if (stdFName.empty())
     {
         QString fileName = QFileDialog::getOpenFileName( 0, "Load image", mSettingsData.loadPathVolume, mFileTypeFilter );
 
@@ -103,19 +107,44 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
             return;
         }
 
-        std::string stdFName = fileName.toLocal8Bit().constData();
+        stdFName = fileName.toLocal8Bit().constData();
+        mSettingsData.loadPathVolume = QFileInfo( QString::fromStdString( stdFName) ).absolutePath();
+    }
 
-        try {
-            mVolumeData.load( stdFName );
-        } catch (std::exception &e)
+    try {
+        mVolumeData.load( stdFName );
+    } catch (std::exception &e)
+    {
+        QMessageBox::critical( this, "Cannot open image file", "Could not open the specified image, quitting.." );
+        QTimer::singleShot(1, qApp, SLOT(quit()));
+        return;
+    }
+    this->saveSettings();
+
+    // allocate label volume (per pixel)
+    mVolumeLabels.reallocSizeLike( mVolumeData );
+    mVolumeLabels.fill(0);
+
+    /** Parse remaining possible args **/
+    if (qApp->arguments().size() >= 3)
+    {
+        if ( loadAnnotation( qApp->arguments().at(2) ) )
         {
-            QMessageBox::critical( this, "Cannot open image file", "Could not open the specified image, quitting.." );
-            QTimer::singleShot(1, qApp, SLOT(quit()));
-            return;
+            if ( qApp->arguments().size() >= 5 && (qApp->arguments().at(4) == "yes") )
+            {
+                mSaveLabelsOnExit = true;
+                mSaveLabelsOnExitPath = qApp->arguments().at(2);
+            }
         }
+    }
 
-        mSettingsData.loadPathVolume = QFileInfo( fileName ).absolutePath();
-        this->saveSettings();
+    mCurZSlice = 0;
+    if (qApp->arguments().size() >= 4) {
+        bool ok = false;
+        unsigned int z = qApp->arguments().at(3).toUInt(&ok);
+
+        if (ok)
+            mCurZSlice = z;
     }
 
 
@@ -126,25 +155,14 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
     //mVolumeData.load("/data/phd/twoexamples/00147.tif");
     qDebug("Volume size: %dx%dx%d\n", mVolumeData.width(), mVolumeData.height(), mVolumeData.depth());
 
-    // allocate label volume (per pixel)
-    mVolumeLabels.reallocSizeLike( mVolumeData );
-    mVolumeLabels.fill(0);
-
     ui->zSlider->setMinimum(0);
     ui->zSlider->setMaximum( mVolumeData.depth()-1 );
     ui->zSlider->setSingleStep(1);
     ui->zSlider->setPageStep(10);
+    ui->zSlider->setValue( mCurZSlice );
 
-    mCurZSlice = 0;
-
-
-    ui->scrollArea->setWidget( ui->labelImg );
-    ui->labelImg->setScrollArea( ui->scrollArea );;
-    ui->labelImg->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
 
     updateImageSlice();
-    ui->labelImg->resize( ui->labelImg->pixmap()->size() );
-    ui->labelImg->setScaledContents(false);
 
     // events
     connect(ui->labelImg,SIGNAL(wheelEventSignal(QWheelEvent*)),this,SLOT(labelImageWheelEvent(QWheelEvent*)));
@@ -179,7 +197,6 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     connect( ui->actionPreferences, SIGNAL(triggered()), this, SLOT(showPreferencesDialog()) );
 
-    connect( ui->actionDisable_all_overlays, SIGNAL(triggered()), this, SLOT(updateImageSlice()) );
     connect( ui->spinScoreThrAbove, SIGNAL(valueChanged(int)), this, SLOT(updateImageSlice(int)) );
     connect( ui->spinScoreThrBelow, SIGNAL(valueChanged(int)), this, SLOT(updateImageSlice(int)) );
 
@@ -246,11 +263,14 @@ void AnnotatorWnd::showPreferencesDialog()
     PreferencesDialog dialog(this);
 
     dialog.setFijiExePath( mSettingsData.fijiExePath );
+    dialog.setMaxVoxelsForSV( mSettingsData.maxVoxForSVox );
 
     if (dialog.exec() == QDialog::Rejected)
         return;
 
     mSettingsData.fijiExePath = dialog.getFijiExePath();
+    mSettingsData.maxVoxForSVox = dialog.getMaxVoxelsForSV();
+
     this->saveSettings();
 }
 
@@ -386,6 +406,7 @@ void AnnotatorWnd::loadSettings()
     mSettingsData.loadPathScores = settings.value("loadPathScores", ".").toString();
     mSettingsData.loadPathVolume = settings.value("loadPathVolume", ".").toString();
     mSettingsData.fijiExePath = settings.value("fijiExePath", "Not set").toString();
+    mSettingsData.maxVoxForSVox = settings.value("maxVoxForSVox", 28000000).toUInt();
 
     ui->spinSVCubeness->setValue( settings.value("spinSVCubeness", 40).toInt() );
     ui->spinSVSeed->setValue( settings.value("spinSVSeed", 20).toInt() );
@@ -404,6 +425,7 @@ void AnnotatorWnd::saveSettings()
     settings.setValue("spinSVSeed", ui->spinSVSeed->value());
     settings.setValue( "spinSVZ", ui->spinSVZ->value() );
     settings.setValue( "fijiExePath", mSettingsData.fijiExePath );
+    settings.setValue( "maxVoxForSVox", mSettingsData.maxVoxForSVox );
 
     qDebug() << m_sSettingsFile;
 }
@@ -460,13 +482,9 @@ void AnnotatorWnd::actionEnableScoreImageTriggered()
     updateImageSlice();
 }
 
-void AnnotatorWnd::actionSaveAnnotTriggered()
+bool AnnotatorWnd::saveAnnotation(const QString& fileName_)
 {
-    QString fileName = QFileDialog::getSaveFileName( this, "Save annotation", mSettingsData.savePath, mFileTypeFilter );
-
-    if (fileName.isEmpty())
-        return;
-
+    QString fileName(fileName_);
     if (!fileName.endsWith(".tif"))
         fileName += ".tif";
 
@@ -474,13 +492,55 @@ void AnnotatorWnd::actionSaveAnnotTriggered()
 
     std::string stdFName = fileName.toLocal8Bit().constData();
 
-    if (!mVolumeLabels.save( stdFName ))
+    if (!mVolumeLabels.save( stdFName )) {
         statusBarMsg(QString("Error saving ") + fileName, 0 );
+        return false;
+    }
     else
         statusBarMsg("Annotation saved successfully.");
 
+    return true;
+}
+
+void AnnotatorWnd::actionSaveAnnotTriggered()
+{
+    QString fileName = QFileDialog::getSaveFileName( this, "Save annotation", mSettingsData.savePath, mFileTypeFilter );
+
+    if (fileName.isEmpty())
+        return;
+
+    if (!saveAnnotation(fileName))
+        return;
+
     mSettingsData.savePath = QFileInfo(fileName).absolutePath();
     this->saveSettings();
+}
+
+bool AnnotatorWnd::loadAnnotation(const QString& fileName)
+{
+    qDebug() << fileName;
+
+    std::string stdFName = fileName.toLocal8Bit().constData();
+
+    if (!mVolumeLabels.load( stdFName )) {
+        QMessageBox::critical(this, "Cannot open file", QString("%1 could not be read.").arg(fileName));
+        return false;
+    }
+
+
+    if ( (mVolumeLabels.width() != mVolumeData.width()) || (mVolumeLabels.height() != mVolumeData.height()) || (mVolumeLabels.depth() != mVolumeData.depth()) )
+    {
+        QMessageBox::critical(this, "Dimensions do not match", "Annotation volume does not match original volume dimensions. Re-setting labels.");
+        mVolumeLabels.reallocSizeLike( mVolumeData );
+        mVolumeLabels.fill(0);
+        updateImageSlice();
+        return false;
+    }
+
+    updateImageSlice();
+    statusBarMsg("Annotation loaded successfully.");
+
+    return true;
 }
 
 void AnnotatorWnd::actionLoadAnnotTriggered()
@@ -490,25 +550,8 @@ void AnnotatorWnd::actionLoadAnnotTriggered()
     if (fileName.isEmpty())
         return;
 
-    qDebug() << fileName;
-
-    std::string stdFName = fileName.toLocal8Bit().constData();
-
-    if (!mVolumeLabels.load( stdFName ))
-        QMessageBox::critical(this, "Cannot open file", QString("%1 could not be read.").arg(fileName));
-
-
-    if ( (mVolumeLabels.width() != mVolumeData.width()) || (mVolumeLabels.height() != mVolumeData.height()) || (mVolumeLabels.depth() != mVolumeData.depth()) )
-    {
-        QMessageBox::critical(this, "Dimensions do not match", "Annotation volume does not match original volume dimensions. Re-setting labels.");
-        mVolumeLabels.reallocSizeLike( mVolumeData );
-        mVolumeLabels.fill(0);
-        updateImageSlice();
+    if (!loadAnnotation(fileName))
         return;
-    }
-
-    updateImageSlice();
-    statusBarMsg("Annotation loaded successfully.");
 
     mSettingsData.loadPath = QFileInfo(fileName).absolutePath();
     this->saveSettings();
@@ -542,12 +585,31 @@ void AnnotatorWnd::genSupervoxelClicked()
     // selected x,y region + whole z range
     mSVRegion = getViewportRegion3D();
 
-    if ( mSVRegion.totalVoxels() > mMaxSVRegionVoxels )
+    if ( mSVRegion.totalVoxels() > mSettingsData.maxVoxForSVox )
     {
-        QMessageBox::critical( this, "Region too large", QString("The current region contains %1 supervoxels, exceeding the limit of %2.").arg(mSVRegion.totalVoxels()).arg(mMaxSVRegionVoxels) );
+        QMessageBox::critical( this, "Region too large",
+                               QString("The current region contains %1 supervoxels, exceeding the limit of %2."
+                                       "You can change this limit in the preferences dialog.").arg(mSVRegion.totalVoxels()).arg(mSettingsData.maxVoxForSVox) );
         mSVRegion.valid = false;
         updateImageSlice();
         return;
+    }
+
+    // do checking on cubeness and seed to avoid crashing while running supervoxel code
+    {
+        const unsigned minLength = mSVRegion.minSideLength();
+
+        const unsigned maxSeed = ceil( minLength / 1.5 );
+
+        qDebug("Min seed: %d", (int)maxSeed);
+
+        if ( ui->spinSVSeed->value() > maxSeed )
+        {
+             QMessageBox::critical( this, "Seed too large", QString("Selected seed size is too large. For this region it has to be at most %1.").arg(maxSeed) );
+             mSVRegion.valid = false;
+             updateImageSlice();
+             return;
+        }
     }
 
     //qDebug("Region: %d %d %d %d", mSVRegion.corner.x, mSVRegion.corner.y,
@@ -915,116 +977,114 @@ void AnnotatorWnd::updateImageSlice(int)
 void AnnotatorWnd::updateImageSlice()
 {
     QImage qimg;
+
     mVolumeData.QImageSlice( mCurZSlice, qimg );
 
-    if (! ui->actionDisable_all_overlays->isChecked())
+    // score overlay?
+    if ( mScoreImageEnabled )
     {
-        // score overlay?
-        if ( mScoreImageEnabled )
+        // sanity check
+        if ( !mScoreImage.isSizeLike( mVolumeData ) ) {
+            qWarning("mScoreImageEnabled == true but score image is not of valid size");
+        }
+        else
         {
-            // sanity check
-            if ( !mScoreImage.isSizeLike( mVolumeData ) ) {
-                qWarning("mScoreImageEnabled == true but score image is not of valid size");
-            }
+            // use as red channel
+            const PixelType *scorePtr = mScoreImage.sliceData( mCurZSlice );
+            unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
+            unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
+
+            const unsigned char minThr = ui->spinScoreThrAbove->value();
+            const unsigned char maxThr = ui->spinScoreThrBelow->value();
+
+            if (minThr == 0 && maxThr==255)
+                overlayRGB( pixPtr, scorePtr, pixPtr, sz, mScoreColor );
             else
-            {
-                // use as red channel
-                const PixelType *scorePtr = mScoreImage.sliceData( mCurZSlice );
-                unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
-                unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
-
-                const unsigned char minThr = ui->spinScoreThrAbove->value();
-                const unsigned char maxThr = ui->spinScoreThrBelow->value();
-
-                if (minThr == 0 && maxThr==255)
-                    overlayRGB( pixPtr, scorePtr, pixPtr, sz, mScoreColor );
-                else
-                    overlayRGBThresholded( pixPtr, scorePtr, pixPtr, sz, mScoreColor, minThr, maxThr );
-            }
-        }
-
-        // user-overlays
-        for (unsigned int i=0; i < mOverlayMenuActions.size(); i++)
-        {
-            if ( !mOverlayVolumeList[i]->isSizeLike( mVolumeData ) )
-                continue;
-            if ( !mOverlayMenuActions[i]->isChecked() )
-                continue;
-
-            const OverlayType *scorePtr = mOverlayVolumeList[i]->sliceData( mCurZSlice );
-            unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
-            unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
-
-            overlayRGB( pixPtr, scorePtr, pixPtr, sz, mOverlayColorList.getColor(i) );
-        }
-
-        // check ground truth slice and draw it
-        if (mOverlayLabelImage)
-        {
-            //int intTransp = 255*mOverlayLabelImageTransparency;
-            int floatTransp = 256 * mOverlayLabelImageTransparency;
-            int floatTranspInv = 256 - floatTransp;
-
-            const LabelType *lblPtr = mVolumeLabels.sliceData( mCurZSlice );
-            unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
-
-            unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
-            int maxLabel = (int) mLblColorList.count();
-
-            for (unsigned int i=0; i < sz; i++)
-            {
-                if ( lblPtr[i] == 0 )
-                    continue;   // unlabeled, we don't care
-
-                if (lblPtr[i] > maxLabel) {
-                    qDebug("Label exceed possible colors: %d", (int)lblPtr[i]);
-                    continue;
-                }
-
-                int vv = (floatTransp * (pixPtr[i] & 0xFF))/256;
-
-                const QColor &color = mLblColorList.getColor(lblPtr[i] - 1);
-
-                int g = vv + (floatTranspInv * color.green()) / 256;
-                int b = vv + (floatTranspInv * color.blue()) / 256;
-                int r = vv + (floatTranspInv * color.red()) / 256;
-
-                QColor c = QColor::fromRgb( r,g,b );
-
-                pixPtr[i] = c.rgb();
-            }
-        }
-
-        if (mSelectedSV.valid)  //if selection is valid, draw highlight
-        {
-            const qreal opacity = 0.6;
-            const qreal invOpacity = 0.99 - opacity;
-
-            const qreal cRd = mSelectionColor.redF() * opacity;
-            const qreal cGr = mSelectionColor.greenF() * opacity;
-            const qreal cBl = mSelectionColor.blueF() * opacity;
-
-            for (int i=0; i < mSelectedSV.pixelList.size(); i++)
-            {
-                unsigned int z = mSelectedSV.pixelList[i].coords.z;
-                if ( mCurZSlice != z )
-                    continue;
-
-                unsigned int x = mSelectedSV.pixelList[i].coords.x;
-                unsigned int y = mSelectedSV.pixelList[i].coords.y;
-
-                QColor pixColor = QColor::fromRgb( qimg.pixel(x, y) );
-
-                qreal r = pixColor.redF() * invOpacity + cRd;
-                qreal g = pixColor.greenF() * invOpacity + cGr;
-                qreal b = pixColor.blueF() * invOpacity + cBl;
-
-                qimg.setPixel( x, y, QColor::fromRgbF( r, g, b ).rgb() );
-            }
+                overlayRGBThresholded( pixPtr, scorePtr, pixPtr, sz, mScoreColor, minThr, maxThr, ui->chkHardThreshold->isChecked() );
         }
     }
 
-    ui->labelImg->setPixmap( QPixmap::fromImage(qimg) );
+    // user-overlays
+    for (unsigned int i=0; i < mOverlayMenuActions.size(); i++)
+    {
+        if ( !mOverlayVolumeList[i]->isSizeLike( mVolumeData ) )
+            continue;
+        if ( !mOverlayMenuActions[i]->isChecked() )
+            continue;
+
+        const OverlayType *scorePtr = mOverlayVolumeList[i]->sliceData( mCurZSlice );
+        unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
+        unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
+
+        overlayRGB( pixPtr, scorePtr, pixPtr, sz, mOverlayColorList.getColor(i) );
+    }
+
+    // check ground truth slice and draw it
+    if (mOverlayLabelImage)
+    {
+        //int intTransp = 255*mOverlayLabelImageTransparency;
+        int floatTransp = 256 * mOverlayLabelImageTransparency;
+        int floatTranspInv = 256 - floatTransp;
+
+        const LabelType *lblPtr = mVolumeLabels.sliceData( mCurZSlice );
+        unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
+
+        unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
+        int maxLabel = (int) mLblColorList.count();
+
+        for (unsigned int i=0; i < sz; i++)
+        {
+            if ( lblPtr[i] == 0 )
+                continue;   // unlabeled, we don't care
+
+            if (lblPtr[i] > maxLabel) {
+                qDebug("Label exceed possible colors: %d", (int)lblPtr[i]);
+                continue;
+            }
+
+            int vv = (floatTransp * (pixPtr[i] & 0xFF))/256;
+
+            const QColor &color = mLblColorList.getColor(lblPtr[i] - 1);
+
+            int g = vv + (floatTranspInv * color.green()) / 256;
+            int b = vv + (floatTranspInv * color.blue()) / 256;
+            int r = vv + (floatTranspInv * color.red()) / 256;
+
+            QColor c = QColor::fromRgb( r,g,b );
+
+            pixPtr[i] = c.rgb();
+        }
+    }
+
+    if (mSelectedSV.valid)  //if selection is valid, draw highlight
+    {
+        const qreal opacity = 0.6;
+        const qreal invOpacity = 0.99 - opacity;
+
+        const qreal cRd = mSelectionColor.redF() * opacity;
+        const qreal cGr = mSelectionColor.greenF() * opacity;
+        const qreal cBl = mSelectionColor.blueF() * opacity;
+
+        for (int i=0; i < mSelectedSV.pixelList.size(); i++)
+        {
+            unsigned int z = mSelectedSV.pixelList[i].coords.z;
+            if ( mCurZSlice != z )
+                continue;
+
+            unsigned int x = mSelectedSV.pixelList[i].coords.x;
+            unsigned int y = mSelectedSV.pixelList[i].coords.y;
+
+            QColor pixColor = QColor::fromRgb( qimg.pixel(x, y) );
+
+            qreal r = pixColor.redF() * invOpacity + cRd;
+            qreal g = pixColor.greenF() * invOpacity + cGr;
+            qreal b = pixColor.blueF() * invOpacity + cBl;
+
+            qimg.setPixel( x, y, QColor::fromRgbF( r, g, b ).rgb() );
+        }
+    }
+
+    ui->labelImg->setImage( qimg );
 }
 
 void AnnotatorWnd::annotateSupervoxel( const SupervoxelSelection &SV, LabelType label, bool onlyCurrentSlice )
@@ -1283,9 +1343,9 @@ void AnnotatorWnd::labelImageWheelEvent(QWheelEvent * e)
             const double zoomFactor = 1/0.9;
             double toZoom = zoomFactor;
             if (e->delta() < 0)
-                toZoom = 1/toZoom;
+                toZoom = 1.0/toZoom;
 
-            ui->labelImg->scaleImage( toZoom );
+            ui->labelImg->scale( toZoom );
             statusBarMsg( QString().sprintf("Zoom: %.1f", ui->labelImg->scaleFactor()) );
 
             break;
@@ -1296,13 +1356,11 @@ void AnnotatorWnd::labelImageWheelEvent(QWheelEvent * e)
         {
             const int toScroll = -e->delta()/4;
 
-            QScrollBar *sBar = 0;
             if (op == opHScroll)
-                sBar = ui->scrollArea->horizontalScrollBar();
+                ui->labelImg->pan( toScroll, 0 );
             else
-                sBar = ui->scrollArea->verticalScrollBar();
+                ui->labelImg->pan( 0, toScroll );
 
-            sBar->setValue( sBar->value() + toScroll );
             break;
         }
 
@@ -1328,6 +1386,9 @@ AnnotatorWnd::~AnnotatorWnd()
 
 void AnnotatorWnd::closeEvent(QCloseEvent *evt)
 {
+    if (mSaveLabelsOnExit)
+        saveAnnotation( mSaveLabelsOnExitPath );
+
     qApp->quit();
     QMainWindow::closeEvent(evt);
 }

@@ -10,6 +10,7 @@
 #include <QPointF>
 #include <QSizeF>
 #include <QPixmap>
+#include <QTime>
 
 class QLabelImage : public QLabel
 {
@@ -39,8 +40,29 @@ public slots:
 private:
      void rescalePixmap()   // re-scale pixmap according to current size
      {
+         //QTime t; t.restart();
+         QPixmap p = mOriginalPixmap.scaled( size(), Qt::IgnoreAspectRatio, Qt::FastTransformation );
+
+         //qDebug("%d", t.elapsed());
+
          if ( !mOriginalPixmap.isNull() )
-            QLabel::setPixmap( mOriginalPixmap.scaled( size(), Qt::IgnoreAspectRatio, Qt::FastTransformation ) );
+         {
+            QSize oldSize(0,0);
+
+            if (QLabel::pixmap() != 0)
+                oldSize = QLabel::pixmap()->size();
+
+
+            //qDebug("val: %ld", (unsigned long int) QLabel::pixmap());
+            if (oldSize != p.size())
+                QLabel::setPixmap( p );
+            else {
+                *(QPixmap *)(QLabel::pixmap()) = p;
+                QLabel::update();
+            }
+         }
+
+         //qDebug("%d", t.elapsed());
      }
 
 public:
@@ -63,8 +85,10 @@ public:
     void setZoomLimits( double min, double max) { mZoomMax = max; mZoomMin = min; }
     void setScrollArea( QScrollArea *sa ) { mScrollArea = sa; }
 
-    inline void setImage( const QImage &img ) {
-        this->setPixmap( QPixmap::fromImage(img) );
+    inline void setImage( const QImage &img )
+    {
+        const QPixmap &p = QPixmap::fromImage(img);
+        this->setPixmap( p );
     }
 
     // returns 'viewable rect' in image (pixmap) coordinates

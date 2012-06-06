@@ -10,6 +10,8 @@ PreferencesDialog::PreferencesDialog(QWidget *parent) :
     ui->setupUi(this);
 
     connect( ui->butBrowseFijiPath, SIGNAL(clicked()), this, SLOT(browseFijiPathClicked()) );
+
+    connect(  ui->spinMaxVox, SIGNAL(valueChanged(int)), this, SLOT( spinMaxVoxValueChanged(int) ) );
 }
 
 PreferencesDialog::~PreferencesDialog()
@@ -27,6 +29,16 @@ void PreferencesDialog::setFijiExePath( const QString &str )
     ui->lineEdit->setText( str );
 }
 
+unsigned PreferencesDialog::getMaxVoxelsForSV() const
+{
+    return ((unsigned int)ui->spinMaxVox->value()) * 1000000U;
+}
+
+void PreferencesDialog::setMaxVoxelsForSV( unsigned val )
+{
+    ui->spinMaxVox->setValue( val / 1000000U );
+}
+
 void PreferencesDialog::browseFijiPathClicked()
 {
     QString fName = QFileDialog::getOpenFileName( this, "Browse for Fiji executable" );
@@ -35,4 +47,12 @@ void PreferencesDialog::browseFijiPathClicked()
         return;
 
     ui->lineEdit->setText(fName);
+}
+
+void PreferencesDialog::spinMaxVoxValueChanged(int newVal)
+{
+    const unsigned Mult = 16;    // empirically found :(
+
+    const unsigned maxRAM = ((unsigned) newVal) * Mult;
+    ui->labelMaxVox->setText( QString("(approx. max %1 MB of RAM needed)").arg( maxRAM ) );
 }

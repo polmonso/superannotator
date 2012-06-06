@@ -14,22 +14,6 @@
    <string>AnnotatorWnd</string>
   </property>
   <widget class="QWidget" name="centralWidget">
-   <widget class="QLabelImage" name="labelImg">
-    <property name="geometry">
-     <rect>
-      <x>350</x>
-      <y>150</y>
-      <width>31</width>
-      <height>61</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>TextLabel</string>
-    </property>
-    <property name="scaledContents">
-     <bool>false</bool>
-    </property>
-   </widget>
    <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
@@ -41,38 +25,12 @@
     </property>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <widget class="QScrollArea" name="scrollArea">
-       <property name="autoFillBackground">
-        <bool>true</bool>
-       </property>
-       <property name="verticalScrollBarPolicy">
-        <enum>Qt::ScrollBarAlwaysOn</enum>
-       </property>
-       <property name="horizontalScrollBarPolicy">
-        <enum>Qt::ScrollBarAlwaysOn</enum>
-       </property>
-       <property name="widgetResizable">
-        <bool>false</bool>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-       <widget class="QWidget" name="scrollAreaWidgetContents_2">
-        <property name="geometry">
-         <rect>
-          <x>0</x>
-          <y>179</y>
-          <width>736</width>
-          <height>562</height>
-         </rect>
-        </property>
-       </widget>
-      </widget>
+      <widget class="MyGraphicsView" name="labelImg"/>
      </item>
      <item>
       <widget class="QScrollArea" name="scrollArea_2">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+        <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
@@ -86,7 +44,7 @@
           <x>0</x>
           <y>0</y>
           <width>298</width>
-          <height>1027</height>
+          <height>1037</height>
          </rect>
         </property>
         <layout class="QHBoxLayout" name="horizontalLayout_12">
@@ -168,7 +126,7 @@
                 <property name="sizeHint" stdset="0">
                  <size>
                   <width>20</width>
-                  <height>40</height>
+                  <height>20</height>
                  </size>
                 </property>
                </spacer>
@@ -263,7 +221,7 @@
                    <item>
                     <widget class="QSpinBox" name="spinSVZ">
                      <property name="sizePolicy">
-                      <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+                      <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                        <horstretch>0</horstretch>
                        <verstretch>0</verstretch>
                       </sizepolicy>
@@ -272,7 +230,7 @@
                       <string> z-steps</string>
                      </property>
                      <property name="prefix">
-                      <string/>
+                      <string>±</string>
                      </property>
                      <property name="minimum">
                       <number>20</number>
@@ -570,7 +528,7 @@
               <property name="minimumSize">
                <size>
                 <width>0</width>
-                <height>95</height>
+                <height>120</height>
                </size>
               </property>
               <property name="autoFillBackground">
@@ -681,6 +639,13 @@
                     </widget>
                    </item>
                   </layout>
+                 </item>
+                 <item>
+                  <widget class="QCheckBox" name="chkHardThreshold">
+                   <property name="text">
+                    <string>Hard thresholding</string>
+                   </property>
+                  </widget>
                  </item>
                 </layout>
                </item>
@@ -953,7 +918,7 @@
      <x>0</x>
      <y>0</y>
      <width>1184</width>
-     <height>23</height>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuView">
@@ -972,8 +937,6 @@
     <addaction name="actionOverlay_labels"/>
     <addaction name="separator"/>
     <addaction name="menuOverlay_score_image"/>
-    <addaction name="separator"/>
-    <addaction name="actionDisable_all_overlays"/>
    </widget>
    <widget class="QMenu" name="menuFile">
     <property name="title">
@@ -1002,6 +965,14 @@
    </attribute>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
+  <action name="actionZoom_fit">
+   <property name="text">
+    <string>Zoom fit</string>
+   </property>
+   <property name="shortcut">
+    <string>F</string>
+   </property>
+  </action>
   <action name="actionOverlay_labels">
    <property name="checkable">
     <bool>true</bool>
@@ -1056,29 +1027,13 @@
     <string>Preferences...</string>
    </property>
   </action>
-  <action name="actionDisable_all_overlays">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Disable all overlays</string>
-   </property>
-   <property name="shortcut">
-    <string>Q</string>
-   </property>
-  </action>
-  <action name="actionZoom_fit">
-   <property name="text">
-    <string>Zoom fit</string>
-   </property>
-  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
   <customwidget>
-   <class>QLabelImage</class>
-   <extends>QLabel</extends>
-   <header>qlabelimage.h</header>
+   <class>MyGraphicsView</class>
+   <extends>QGraphicsView</extends>
+   <header>mygraphicsview.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

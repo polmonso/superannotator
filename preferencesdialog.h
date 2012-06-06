@@ -18,8 +18,12 @@ public:
     QString getFijiExePath();
     void setFijiExePath( const QString &str );
 
+    unsigned getMaxVoxelsForSV() const;
+    void setMaxVoxelsForSV( unsigned val );
+
 public slots:
     void browseFijiPathClicked();
+    void spinMaxVoxValueChanged(int);
 
 private:
     Ui::PreferencesDialog *ui;

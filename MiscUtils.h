@@ -39,7 +39,7 @@ static inline void overlayRGB( const unsigned int *baseImg, const unsigned char 
 }
 
 static inline void overlayRGBThresholded( const unsigned int *baseImg, const unsigned char *overlayImg, unsigned int *destImg, unsigned int numElem, const QColor &color,
-                                          unsigned char minThr, unsigned char maxThr)
+                                          unsigned char minThr, unsigned char maxThr, bool hardThreshold)
 {
     qreal sR, sG, sB;
     color.getRgbF( &sR, &sG,&sB );
@@ -58,6 +58,9 @@ static inline void overlayRGBThresholded( const unsigned int *baseImg, const uns
         unsigned char overlayVal = overlayImg[i];
         if (overlayVal < minThr || overlayVal > maxThr)
             overlayVal = 0;
+
+        if (hardThreshold && (overlayVal > 0))
+            overlayVal = 255;
 
         qreal sc = overlayVal * div255;
         qreal scInv = 1.0 - sc;
