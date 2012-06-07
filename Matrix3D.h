@@ -20,8 +20,9 @@
 template<typename T>
 class Matrix3D
 {
-private:
+public:
     typedef itk::Image<T, 3> ItkImageType;
+private:
     typedef unsigned int     DefaultLabelType;
     
     Matrix3D( const Matrix3D<T>& rhs );

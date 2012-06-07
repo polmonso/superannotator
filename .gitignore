@@ -1,3 +1,4 @@
-supervoxel-annotator.pro.user
 TestPlugin-build*
 TestPlugin.pro.user
+plugins/*-build-desktop*
+*.pro.user

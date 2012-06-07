@@ -1,61 +1,16 @@
-#-------------------------------------------------
-#
-# Project created by QtCreator 2012-01-12T17:46:21
-#
-#-------------------------------------------------
+TEMPLATE = lib
+INCLUDEPATH += ../../
 
-QT       += core gui
+HEADERS += \
+    SegmentationColorifier.h \
+    ../../PluginBase.h \
+    Colormap.h
 
-TARGET = supervoxel-annotator
-TEMPLATE = app
-
-
-SOURCES += main.cpp\
-        annotatorwnd.cpp \
-    qlabelimage.cpp \
-    textinfodialog.cpp \
-    regionlistframe.cpp \
-    PluginServices.cpp \
-    preferencesdialog.cpp \
-    mygraphicsview.cpp
-
-HEADERS  += annotatorwnd.h \
-    qlabelimage.h \
-    SuperVoxeler.h \
-    Matrix3D.h \
-    ColorLists.h \
-    FijiHelper.h \
-    Region3D.h \
-    ShapeStatistics.h \
-    textinfodialog.h \
-    regionlistframe.h \
-    RegionGrowing.h \
-    PluginBase.h \
-    CommonTypes.h \
-    PluginServices.h \
-    MiscUtils.h \
-    preferencesdialog.h \
-    mygraphicsview.h
-
-FORMS    += annotatorwnd.ui \
-    textinfodialog.ui \
-    regionlistframe.ui \
-    preferencesdialog.ui
-
-# -- This is a neat trick to export symbols from the executable
-#  so the loaded plugin can link to them
-unix {
-    QMAKE_CXXFLAGS += -fvisibility=hidden
-    QMAKE_LFLAGS += -fvisibility=hidden -Wl,--export-dynamic
-}
-
-QMAKE_CXXFLAGS += -fopenmp
-QMAKE_LFLAGS += -fopenmp
+SOURCES += \
+    SegmentationColorifier.cpp \
+    Colormap.cpp
 
 # Replace to point to ITK
-win32 {
-  ITKPATH = C:/dev/InsightToolkit-3.20.1
-}
 
 unix {
   machName = $$QMAKE_HOST.name
@@ -65,15 +20,8 @@ unix {
   contains(machName, cvlabsrv): ITKPATH = /home/cjbecker/filer/toolkits/InsightToolkit-3.20.0
 }
 
+message($$ITKPATH)
 ITKPATH_BUILD = $$ITKPATH/build
-
-# Replace to point to SLIC path
-SLICPATH = $$_PRO_FILE_PWD_/../slic
-
-INCLUDEPATH += $$SLICPATH/../
-
-SOURCES += $$SLICPATH/LKM.cpp $$SLICPATH/utils.cpp
-
 
 #### ITK STUFF
 
@@ -158,32 +106,5 @@ INCLUDEPATH += $$ITKPATH_BUILD/Code/Algorithms
 INCLUDEPATH += $$ITKPATH/
 INCLUDEPATH += $$ITKPATH_BUILD/
 
-LIBS += -L$$ITKPATH_BUILD/bin -lITKIO -lITKStatistics -lITKNrrdIO -litkgdcm -litkjpeg12 -litkjpeg16 -litkopenjpeg -litkpng -litktiff -litkjpeg8 -lITKSpatialObject -lITKMetaIO -lITKDICOMParser -lITKEXPAT -lITKniftiio -lITKznz -litkzlib -lITKCommon -litksys -litkvnl_inst -litkvnl_algo -litkvnl -litkvcl -litkv3p_lsqr -lpthread -lm -litkNetlibSlatec -litkv3p_netlib
-
-unix {
- LIBS += -ldl
-}
-
-win32 {
- LIBS += -lsnmpapi -lrpcrt4 -lws2_32 -lgdi32
-}
-
+LIBS += -L$$ITKPATH_BUILD/bin -lITKIO -lITKStatistics -lITKNrrdIO -litkgdcm -litkjpeg12 -litkjpeg16 -litkopenjpeg -litkpng -litktiff -litkjpeg8 -lITKSpatialObject -lITKMetaIO -lITKDICOMParser -lITKEXPAT -lITKniftiio -lITKznz -litkzlib -lITKCommon -litksys -litkvnl_inst -litkvnl_algo -litkvnl -litkvcl -litkv3p_lsqr -lpthread -lm -ldl -litkNetlibSlatec -litkv3p_netlib
 LIBS += -luuid
-
-OTHER_FILES += \
-    TODO.txt
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
