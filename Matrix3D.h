@@ -38,6 +38,20 @@ public:
         realloc(w,h,d);
     }
 
+    // returns true if coords are of a valid pixel in the image
+    inline bool pixIsInImage( unsigned x, unsigned y, unsigned z )
+    {
+        if (x < 0)  return false;
+        if (y < 0)  return false;
+        if (z < 0)  return false;
+
+        if ( x >= mWidth )  return false;
+        if ( y >= mHeight )  return false;
+        if ( z >= mDepth )  return false;
+
+        return true;
+    }
+
     // creates a binary image based on thresholding btw [thrMin, thrMax]
     // and creates a connected component map
     template<typename T2>

@@ -18,6 +18,7 @@
 #include <itkImageFileWriter.h>
 #include <itkImageRegionConstIterator.h>
 #include <itkImageRegionIterator.h>
+#include <itkExceptionObject.h>
 
 
 class SegmentationColorifier : public PluginBase
@@ -136,7 +137,14 @@ public slots:
             writer->SetInput(rgbImage);
             writer->SetFileName( destFile.toLocal8Bit().constData() );
 
-            writer->Update();
+            try {
+                writer->Update();
+            }
+            catch( itk::ExceptionObject & err )
+            {
+                QMessageBox::critical( 0, "Error saving file", QString("Error saving file: %1.").arg( err.GetDescription() ) );
+                return;
+            }
         }
 
 /*

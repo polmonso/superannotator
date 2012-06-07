@@ -909,6 +909,8 @@ void AnnotatorWnd::chkLabelOverlayStateChanged(int state)
 
 void AnnotatorWnd::updateCursorPixelInfo(int x, int y, int z)
 {
+    if (!mVolumeData.pixIsInImage(x,y,z))   return; // something invalid
+
     QString pixPos = QString("Pixel (%1, %2, %3): %4").arg(x).arg(y).arg(z).arg( mVolumeData(x,y,z), 3 );
     ui->labelPixInfoTop->setText( pixPos );
 

@@ -1,8 +1,9 @@
 #include "Colormap.h"
+#include <QDebug>
 
-#define COLORMAP_SIZE 64
+#define COLORMAP_SIZE(x) (sizeof(x) / (sizeof(x[0]) * 3) )
 
-static Colormap::Scalar colormapLines[3 * COLORMAP_SIZE] =
+static Colormap::Scalar colormapLines[] =
 {
     0,     0,   255,
     0,   128,     0,
@@ -10,64 +11,7 @@ static Colormap::Scalar colormapLines[3 * COLORMAP_SIZE] =
     0,   191,   191,
   191,     0,   191,
   191,   191,     0,
-   64,    64,    64,
-    0,     0,   255,
-    0,   128,     0,
-  255,     0,     0,
-    0,   191,   191,
-  191,     0,   191,
-  191,   191,     0,
-   64,    64,    64,
-    0,     0,   255,
-    0,   128,     0,
-  255,     0,     0,
-    0,   191,   191,
-  191,     0,   191,
-  191,   191,     0,
-   64,    64,    64,
-    0,     0,   255,
-    0,   128,     0,
-  255,     0,     0,
-    0,   191,   191,
-  191,     0,   191,
-  191,   191,     0,
-   64,    64,    64,
-    0,     0,   255,
-    0,   128,     0,
-  255,     0,     0,
-    0,   191,   191,
-  191,     0,   191,
-  191,   191,     0,
-   64,    64,    64,
-    0,     0,   255,
-    0,   128,    0,
-  255,     0,     0,
-    0,   191,   191,
-  191,     0,   191,
-  191,   191,     0,
-   64,    64,    64,
-    0,     0,   255,
-    0,   128,     0,
-  255,     0,     0,
-    0,   191,   191,
-  191,     0,   191,
-  191,   191,     0,
-   64,    64,    64,
-    0,     0,   255,
-    0,   128,     0,
-  255,     0,     0,
-    0,   191,   191,
-  191,     0,   191,
-  191,   191,     0,
-   64,    64,    64,
-    0,     0,   255,
-    0,   128,     0,
-  255,     0,     0,
-    0,   191,   191,
-  191,     0,   191,
-  191,   191,     0,
-   64,    64,    64,
-    0,     0,   255
+   64,    64,    64
 };
 
 
@@ -79,13 +23,28 @@ Colormap::Colormap( ColormapType type )
 void Colormap::get( std::vector<itkRGBPixel> &list )
 {
     list.clear();
-    list.resize( COLORMAP_SIZE );
 
-    for (unsigned i=0; i < COLORMAP_SIZE; i++)
+    unsigned int colormapSize = 0;
+
+    unsigned char *colormapPtr = 0;
+
+    switch(mType)
     {
-        unsigned char R = colormapLines[ 3*i + 0 ];
-        unsigned char G = colormapLines[ 3*i + 1 ];
-        unsigned char B = colormapLines[ 3*i + 2 ];
+        case Lines:
+            colormapPtr = colormapLines;
+            colormapSize = COLORMAP_SIZE(colormapLines);
+            break;
+    }
+
+    qDebug("Map size: %d", (int) colormapSize);
+
+    list.resize( colormapSize );
+
+    for (unsigned i=0; i < colormapSize; i++)
+    {
+        unsigned char R = colormapPtr[ 3*i + 0 ];
+        unsigned char G = colormapPtr[ 3*i + 1 ];
+        unsigned char B = colormapPtr[ 3*i + 2 ];
         list[i].Set( R, G, B );
     }
 }
