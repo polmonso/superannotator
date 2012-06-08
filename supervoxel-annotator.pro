@@ -60,9 +60,9 @@ win32 {
 unix {
   machName = $$QMAKE_HOST.name
 
-  ITKPATH = /data/phd/software/itk/compile/InsightToolkit-3.20.0
+  ITKPATH = /home/cjbecker/filer/toolkits/InsightToolkit-3.20.0
 
-  contains(machName, cvlabsrv): ITKPATH = /home/cjbecker/filer/toolkits/InsightToolkit-3.20.0
+  contains(machName, laptop): ITKPATH = /data/phd/software/itk/compile/InsightToolkit-3.20.0
 }
 
 ITKPATH_BUILD = $$ITKPATH/build
