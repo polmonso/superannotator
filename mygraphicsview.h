@@ -6,12 +6,14 @@
 #include <QPixmap>
 #include <QMouseEvent>
 #include <QGraphicsScene>
+#include <QImage>
 
 class MyGraphicsView : public QGraphicsView
 {
     Q_OBJECT
 protected:
     QGraphicsScene* mScene;
+    QImage  mOrigImage;
 
 public:
     explicit MyGraphicsView(QWidget *parent = 0);

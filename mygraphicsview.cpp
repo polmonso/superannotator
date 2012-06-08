@@ -10,25 +10,111 @@
 #include <QWheelEvent>
 #include <QDebug>
 #include <QTime>
+#include <QImage>
+
+class MyPixmapItem : public QGraphicsPixmapItem
+{
+protected:
+    QImage *mImgPtr;
+    bool    mImgUpdated;
+    QRect   mImgPtrRegion;
+
+public:
+    inline void setImgPtr( QImage *ptr, const QRect &region )
+    {
+        mImgPtr = ptr;
+        mImgPtrRegion = region;
+        mImgUpdated = true;
+    }
+
+public:
+    virtual void paint ( QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget = 0 )
+    {
+        //qDebug("Paint %d %d", (int)pos().x(), (int) pos().y());
+        // only  update if flag is set
+        if (mImgUpdated)
+        {
+            setPixmap( QPixmap::fromImage( mImgPtr->copy( mImgPtrRegion ) ) );
+            mImgUpdated = false;
+            //qDebug("Updated");
+        }
+
+        QGraphicsPixmapItem::paint( painter, option, widget );
+    }
+};
+
 
 void MyGraphicsView::setImage( const QImage &img, const QRect &updateRect )
 {
-    const bool firstTime = mScene->items().size() == 0;
+    const bool firstTime = (mScene->items().size() == 0) || ( img.width() != sceneRect().toRect().width() ) || ( img.height() != sceneRect().toRect().height() );
+    const unsigned blockSize = 100;
+
+    // check how many blocks fit in x and y (round up)
+    const unsigned nBlocksX = (img.width() + blockSize - 1) / blockSize;
+    const unsigned nBlocksY = (img.height() + blockSize - 1) / blockSize;
+
+    const unsigned nTotal = nBlocksX * nBlocksY;
+
+    //qDebug("nTotal: %d", (int) nTotal);
+
+    const unsigned imWidth = img.width();
+    const unsigned imHeight = img.height();
+
+    // copy image
+    mOrigImage = img;
+
 
     //Set-up the view if it is the 1st time
     if (firstTime)
     {
+        qDebug("First time graphics view");
         setSceneRect(0, 0, img.width(), img.height());
         SetCenter(QPointF(img.width()/2.0, img.height()/2.0)); //A modified version of centerOn(), handles special cases
 
-        mScene->addPixmap( QPixmap() );
+        for (unsigned xb=0; xb < imWidth; xb += blockSize)
+        for (unsigned yb=0; yb < imHeight; yb += blockSize)
+        {
+            MyPixmapItem *pi = new MyPixmapItem();
+            mScene->addItem( pi );
+
+            // set coords
+            pi->setPos( xb, yb );
+            pi->setScale(1.0);
+
+            pi->setShapeMode( QGraphicsPixmapItem::QGraphicsPixmapItem::BoundingRectShape );
+            pi->setTransformationMode( Qt::FastTransformation );
+        }
     }
 
+    unsigned int i=0;
+    for (unsigned xb=0; xb < imWidth; xb += blockSize)
+    for (unsigned yb=0; yb < imHeight; yb += blockSize)
+    {
+        MyPixmapItem *pi = ((MyPixmapItem *) mScene->items()[i]);
 
-    ((QGraphicsPixmapItem *) mScene->items()[0])->setPixmap( QPixmap::fromImage( img ) );
+
+        // this + 1 is a trick to avoid some artifacts when scaling
+        //  it means that some blocks will overlap, but who cares
+        unsigned w = blockSize + 1;
+        unsigned h = blockSize + 1;
+
+        QPointF pos = pi->pos();
+
+        if ( pos.x() + w > imWidth )
+            w = imWidth - pos.x();
+        if ( pos.y() + h > imHeight )
+            h = imHeight - pos.y();
+
+        pi->setImgPtr( &mOrigImage, QRect( pos.x(), pos.y(), w, h ) );
+
+        i++;
+    }
+
+    viewport()->update();
+
 
     //qDebug("Valid: %d", (int)updateRect.isValid());
-
+/*
     QRect toUpdate;
     if (updateRect.isValid())
         toUpdate = updateRect;
@@ -42,7 +128,7 @@ void MyGraphicsView::setImage( const QImage &img, const QRect &updateRect )
 
     QRect newUpdate = thisToScreen.intersect( viewport()->rect() );
 
-    viewport()->update( newUpdate );
+    viewport()->update( newUpdate );*/
 
     //mScene->update( QRectF(0,0,10,10) );
 
@@ -70,7 +156,7 @@ MyGraphicsView::MyGraphicsView(QWidget* parent) : QGraphicsView(parent)
 
     this->setCacheMode( QGraphicsView::CacheNone );
 
-    this->setViewportUpdateMode( QGraphicsView::NoViewportUpdate);
+    this->setViewportUpdateMode( QGraphicsView::NoViewportUpdate );
 }
 
 /**
@@ -266,7 +352,7 @@ QRect MyGraphicsView::getViewableRect() const
         r.setLeft(0);
 
     // get only intersection between pixmap and region
-    r = r.intersect( mScene->items()[0]->boundingRect().toRect() );
+    r = r.intersect( mScene->sceneRect().toRect() );
 
     //qDebug() << "Rect2 " << r;
 
