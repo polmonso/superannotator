@@ -42,7 +42,11 @@ private:
 
 protected:
     void closeEvent(QCloseEvent *);
-    bool loadAnnotation(const QString& fileName);
+
+    // if importAsLabel is positive, then it asks for a threshold and sets
+    //   the values > threshold as label "importAsLabel"
+    bool loadAnnotation(const QString& fileName, int importAsLabel = -1, LabelType threshold = 0);
+
     bool saveAnnotation(const QString& fileName);
 
 private:
@@ -141,6 +145,8 @@ public slots:
 
     void actionSaveAnnotTriggered();
     void actionLoadAnnotTriggered();
+
+    void actionImportAnnotTriggered();
 
     void actionLoadScoreImageTriggered();
     void actionEnableScoreImageTriggered();

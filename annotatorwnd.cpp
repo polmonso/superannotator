@@ -23,6 +23,7 @@
 
 #include "PluginBase.h"
 #include <QColorDialog>
+#include <QInputDialog>
 
 #include "preferencesdialog.h"
 /** ---- these variables here are a bit dirty, but it is to avoid putting them in the .h file
@@ -181,6 +182,8 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     connect( ui->actionSave_annotation, SIGNAL(triggered()), this, SLOT(actionSaveAnnotTriggered()) );
     connect( ui->actionLoad_annotation, SIGNAL(triggered()), this, SLOT(actionLoadAnnotTriggered()) );
+
+    connect( ui->actionImport_annotation, SIGNAL(triggered()), this, SLOT(actionImportAnnotTriggered()) );
 
     connect( ui->actionScoreImageLoad, SIGNAL(triggered()), this, SLOT(actionLoadScoreImageTriggered()) );
     connect( ui->actionScoreImageEnabled, SIGNAL(triggered()), this, SLOT(actionEnableScoreImageTriggered()) );
@@ -516,7 +519,7 @@ void AnnotatorWnd::actionSaveAnnotTriggered()
     this->saveSettings();
 }
 
-bool AnnotatorWnd::loadAnnotation(const QString& fileName)
+bool AnnotatorWnd::loadAnnotation(const QString& fileName, int importAsLabel, LabelType threshold)
 {
     qDebug() << fileName;
 
@@ -527,7 +530,6 @@ bool AnnotatorWnd::loadAnnotation(const QString& fileName)
         return false;
     }
 
-
     if ( (mVolumeLabels.width() != mVolumeData.width()) || (mVolumeLabels.height() != mVolumeData.height()) || (mVolumeLabels.depth() != mVolumeData.depth()) )
     {
         QMessageBox::critical(this, "Dimensions do not match", "Annotation volume does not match original volume dimensions. Re-setting labels.");
@@ -537,10 +539,57 @@ bool AnnotatorWnd::loadAnnotation(const QString& fileName)
         return false;
     }
 
+    // check if we have to import it
+    if ( importAsLabel >= 0 )
+    {
+        const unsigned numEl = mVolumeLabels.numElem();
+        const LabelType label = (unsigned char) importAsLabel;
+
+        for (unsigned i=0; i < numEl; i++)
+        {
+            if ( mVolumeLabels.data()[i] >= threshold )
+                mVolumeLabels.data()[i] = label;
+            else
+                mVolumeLabels.data()[i] = 0;
+        }
+    }
+
     updateImageSlice();
     statusBarMsg("Annotation loaded successfully.");
 
     return true;
+}
+
+void AnnotatorWnd::actionImportAnnotTriggered()
+{
+    QString fileName = QFileDialog::getOpenFileName( this, "Import annotation", mSettingsData.loadPath, mFileTypeFilter );
+
+    if (fileName.isEmpty())
+        return;
+
+    bool ok = false;
+
+    // ask for threshold
+    int threshold = QInputDialog::getInteger( 0, "Threshold value", "Specify the thresholding value:",
+                              128, 0, 255, 1, &ok );
+    if (!ok) return;
+
+    // prepare string list, without 'not-labeled' item
+    QStringList items;
+    for (unsigned i=1; i < ui->comboLabel->count(); i++)
+        items.append( ui->comboLabel->itemText(i) );
+
+    QString selectedItem = QInputDialog::getItem( 0, "Select label", "Label to assign to values higher than threshold:",
+                           items, 0, false, &ok);
+    if (!ok)    return;
+
+    int importAsLabel = items.indexOf( selectedItem ) + 1;
+
+    if (!loadAnnotation(fileName, importAsLabel, threshold))
+        return;
+
+    mSettingsData.loadPath = QFileInfo(fileName).absolutePath();
+    this->saveSettings();
 }
 
 void AnnotatorWnd::actionLoadAnnotTriggered()

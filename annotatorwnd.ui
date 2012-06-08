@@ -42,8 +42,8 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>0</y>
-          <width>298</width>
+          <y>-100</y>
+          <width>309</width>
           <height>1037</height>
          </rect>
         </property>
@@ -843,7 +843,7 @@
                         <string>Full connect.</string>
                        </property>
                        <property name="checked">
-                        <bool>true</bool>
+                        <bool>false</bool>
                        </property>
                       </widget>
                      </item>
@@ -945,6 +945,8 @@
     <addaction name="actionSave_annotation"/>
     <addaction name="actionLoad_annotation"/>
     <addaction name="separator"/>
+    <addaction name="actionImport_annotation"/>
+    <addaction name="separator"/>
     <addaction name="actionPreferences"/>
    </widget>
    <widget class="QMenu" name="menuPlugins">
@@ -1025,6 +1027,11 @@
   <action name="actionPreferences">
    <property name="text">
     <string>Preferences...</string>
+   </property>
+  </action>
+  <action name="actionImport_annotation">
+   <property name="text">
+    <string>Import annotation...</string>
    </property>
   </action>
  </widget>
