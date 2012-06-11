@@ -376,12 +376,19 @@ public:
 
         itkImg->SetPixelContainer( pixContainer );
 
+        typename ItkImageType::IndexType imStart;
+        imStart[0] = imStart[1] = imStart[2] = 0;
+
         typename ItkImageType::SizeType imSize;
         imSize[0] = mWidth;
         imSize[1] = mHeight;
         imSize[2] = mDepth;
 
-        itkImg->SetRegions(imSize);
+        typename ItkImageType::RegionType imRegion;
+        imRegion.SetSize( imSize );
+        imRegion.SetIndex( imStart );
+
+        itkImg->SetRegions(imRegion);
 
         return itkImg;
     }
