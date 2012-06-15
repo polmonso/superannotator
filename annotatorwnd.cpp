@@ -25,6 +25,9 @@
 #include <QColorDialog>
 #include <QInputDialog>
 
+#include <QThread>
+#include "extras/waitform.h"
+
 #include "preferencesdialog.h"
 /** ---- these variables here are a bit dirty, but it is to avoid putting them in the .h file
  ** even though it prevents multiple instances
@@ -627,6 +630,38 @@ Region3D AnnotatorWnd::getViewportRegion3D()
     return Region3D( ui->labelImg->getViewableRect(), zMin, zMax - zMin + 1 );
 }
 
+// this is a helper for genSupervoxelClicked()
+class SupervoxelThread : public QThread
+{
+
+ public:
+    typedef SuperVoxeler<PixelType>  SupervoxelerType;
+    typedef Matrix3D<PixelType>      VolumeType;
+
+protected:
+    SupervoxelerType  &mSVox;
+    const VolumeType  &mRawVolume;
+    int mSeed;
+    unsigned int mCubeness;
+    AnnotatorWnd *mParent;
+
+public:
+
+    SupervoxelThread(AnnotatorWnd *parent, SupervoxelerType &svox, const VolumeType &raw,
+             int seed, unsigned int cubeness) : QThread(parent), mSVox(svox), mRawVolume(raw),
+                                                mSeed(seed), mCubeness(cubeness), mParent(parent)
+    {
+    }
+
+ public:
+     void run()
+     {
+         mSVox.apply( mRawVolume, mSeed, mCubeness );
+
+         QMetaObject::invokeMethod( mParent, "statusBarMsg", Qt::QueuedConnection, Q_ARG( QString, QString("Done: %1 supervoxels generated.").arg( mSVox.numLabels() ) ) );
+     }
+};
+
 void AnnotatorWnd::genSupervoxelClicked()
 {
     //qDebug() << "Pos:  " << ui->labelImg->x() << " " <<  ui->labelImg->y();
@@ -669,21 +704,20 @@ void AnnotatorWnd::genSupervoxelClicked()
         }
     }
 
-    //qDebug("Region: %d %d %d %d", mSVRegion.corner.x, mSVRegion.corner.y,
-      //      mSVRegion.size.x, mSVRegion.size.y );
-
     // crop data
     mSVRegion.useToCrop( mVolumeData, &mCroppedVolumeData );
 
-    mSVoxel.apply( mCroppedVolumeData, ui->spinSVSeed->value(), ui->spinSVCubeness->value() );
+    //mSVoxel.apply( mCroppedVolumeData, ui->spinSVSeed->value(), ui->spinSVCubeness->value() );
     mSelectedSV.valid = false;
-
-    updateImageSlice();
-
-    statusBarMsg( QString("Done: %1 supervoxels generated.").arg( mSVoxel.numLabels() ), 0 );
 
     // save supervoxel parameters
     saveSettings();
+
+    SupervoxelThread *thread = new SupervoxelThread( this, mSVoxel, mCroppedVolumeData, ui->spinSVSeed->value(), ui->spinSVCubeness->value() );
+
+    connect( thread, SIGNAL(finished()), this, SLOT(updateImageSlice()) );
+
+    runThreadWithProgress<SupervoxelThread>( this, thread );
 }
 
 void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )

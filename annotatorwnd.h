@@ -86,8 +86,6 @@ private:
     bool   mOverlayLabelImage;    // if true, then an overlay is drawn on top of the image, showing color-coded pixel labels
     double mOverlayLabelImageTransparency;  // btw 0 and 1, transparency of labels
 
-    void statusBarMsg( const QString &str, int timeout = 1200 );
-
     void annotateSupervoxel( const SupervoxelSelection &SV, LabelType label, bool onlyCurrentSlice = false );
 
     // scans for plugins and adds them.
@@ -129,6 +127,8 @@ public slots:
     void    constraintsChangedCallback(int) { constraintsChangedCallback(); }
 
 public slots:
+
+    void statusBarMsg( const QString &str, int timeout = 1200 );
 
     void updateImageSlice();    //updates the label widget with mCurZSlice slice
     void updateImageSlice(int);    //same as above, discards parameter int

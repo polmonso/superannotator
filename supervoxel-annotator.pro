@@ -17,7 +17,8 @@ SOURCES += main.cpp\
     regionlistframe.cpp \
     PluginServices.cpp \
     preferencesdialog.cpp \
-    mygraphicsview.cpp
+    mygraphicsview.cpp \
+    extras/waitform.cpp
 
 HEADERS  += annotatorwnd.h \
     qlabelimage.h \
@@ -35,12 +36,14 @@ HEADERS  += annotatorwnd.h \
     PluginServices.h \
     MiscUtils.h \
     preferencesdialog.h \
-    mygraphicsview.h
+    mygraphicsview.h \
+    extras/waitform.h
 
 FORMS    += annotatorwnd.ui \
     textinfodialog.ui \
     regionlistframe.ui \
-    preferencesdialog.ui
+    preferencesdialog.ui \
+    extras/waitform.ui
 
 # -- This is a neat trick to export symbols from the executable
 #  so the loaded plugin can link to them
@@ -173,17 +176,5 @@ LIBS += -luuid
 OTHER_FILES += \
     TODO.txt
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+RESOURCES += \
+    icons/icons.qrc
