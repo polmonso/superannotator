@@ -42,7 +42,7 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>-100</y>
+          <y>0</y>
           <width>309</width>
           <height>1037</height>
          </rect>
@@ -934,6 +934,7 @@
     </widget>
     <addaction name="actionZoom_fit"/>
     <addaction name="separator"/>
+    <addaction name="actionHide_volume"/>
     <addaction name="actionOverlay_labels"/>
     <addaction name="separator"/>
     <addaction name="menuOverlay_score_image"/>
@@ -1032,6 +1033,17 @@
   <action name="actionImport_annotation">
    <property name="text">
     <string>Import annotation...</string>
+   </property>
+  </action>
+  <action name="actionHide_volume">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Hide volume</string>
+   </property>
+   <property name="shortcut">
+    <string>H</string>
    </property>
   </action>
  </widget>

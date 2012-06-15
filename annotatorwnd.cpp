@@ -209,6 +209,8 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
     connect( ui->spinScoreThrAbove, SIGNAL(valueChanged(int)), this, SLOT(updateImageSlice(int)) );
     connect( ui->spinScoreThrBelow, SIGNAL(valueChanged(int)), this, SLOT(updateImageSlice(int)) );
 
+    connect( ui->actionHide_volume, SIGNAL(changed()), this, SLOT(updateImageSlice()) );
+
 
     ui->chkLabelOverlay->setChecked(true);
 
@@ -1072,6 +1074,10 @@ void AnnotatorWnd::updateImageSlice()
     QImage qimg;
 
     mVolumeData.QImageSlice( mCurZSlice, qimg );
+
+    // hide?
+    if ( ui->actionHide_volume->isChecked() )
+        qimg.fill( Qt::black );
 
     if (constraintsUpdateImagesliceCallback(qimg))
     {
