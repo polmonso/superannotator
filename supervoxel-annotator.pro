@@ -55,18 +55,8 @@ unix {
 QMAKE_CXXFLAGS += -fopenmp
 QMAKE_LFLAGS += -fopenmp
 
-# Replace to point to ITK
-win32 {
-  ITKPATH = C:/dev/InsightToolkit-3.20.1
-}
-
-unix {
-  machName = $$QMAKE_HOST.name
-
-  ITKPATH = /home/cjbecker/filer/toolkits/InsightToolkit-3.20.0
-
-  contains(machName, laptop): ITKPATH = /data/phd/software/itk/compile/InsightToolkit-3.20.0
-}
+# IMPORTANT: user should create this file to specify ITKPATH
+include(customUserDefs.inc)
 
 ITKPATH_BUILD = $$ITKPATH/build
 

@@ -1,5 +1,5 @@
 TEMPLATE = lib
-INCLUDEPATH += ../
+INCLUDEPATH += ../../
 
 HEADERS += \
     TestPlugin.h \
@@ -8,8 +8,9 @@ HEADERS += \
 SOURCES += \
     TestPlugin.cpp
 
-# Replace to point to ITK
-ITKPATH = /data/phd/software/itk/compile/InsightToolkit-3.20.0
+# ITK PATH
+include(../../customUserDefs.inc)
+
 ITKPATH_BUILD = $$ITKPATH/build
 
 #### ITK STUFF

@@ -2,3 +2,4 @@ TestPlugin-build*
 TestPlugin.pro.user
 plugins/*-build-desktop*
 *.pro.user
+customUserDefs.inc

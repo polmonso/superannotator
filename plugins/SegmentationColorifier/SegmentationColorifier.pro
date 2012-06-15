@@ -12,13 +12,7 @@ SOURCES += \
 
 # Replace to point to ITK
 
-unix {
-  machName = $$QMAKE_HOST.name
-
-  ITKPATH = /home/cjbecker/filer/toolkits/InsightToolkit-3.20.0
-
-  contains(machName, laptop): ITKPATH = /data/phd/software/itk/compile/InsightToolkit-3.20.0
-}
+include(../../customUserDefs.inc)
 
 message($$ITKPATH)
 ITKPATH_BUILD = $$ITKPATH/build
