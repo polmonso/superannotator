@@ -75,6 +75,12 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
     mLabelListData.pFrame = 0;
     mSaveLabelsOnExit = false;
 
+    mConstraintsDisplayTimer = new QTimer(this);
+    connect( ui->groupBoxRestrictPixLabels, SIGNAL(toggled(bool)), this, SLOT(constraintsChangedCallback()) );
+    connect( ui->spinPixMax, SIGNAL(valueChanged(int)), this, SLOT(constraintsChangedCallback(int)) );
+    connect( ui->spinPixMin, SIGNAL(valueChanged(int)), this, SLOT(constraintsChangedCallback(int)) );
+    connect( mConstraintsDisplayTimer, SIGNAL(timeout()), this, SLOT(constraintsTimerCallback()) );
+
     // settings
     m_sSettingsFile = QApplication::applicationDirPath() + "/settings.ini";
     qDebug() << m_sSettingsFile;
@@ -1025,11 +1031,55 @@ void AnnotatorWnd::updateImageSlice(int)
     updateImageSlice();
 }
 
+bool AnnotatorWnd::constraintsUpdateImagesliceCallback(QImage &slice)
+{
+    if (!mConstraintsDisplayTimer->isActive())
+        return false;
+
+    if ( !ui->groupBoxRestrictPixLabels->isChecked() )
+        return false;
+
+    const PixelType *imgPtr = mVolumeData.sliceData( mCurZSlice );
+    unsigned int *pixPtr = (unsigned int *) slice.constBits(); // trick!
+    unsigned int sz = mVolumeData.width() * mVolumeData.height();
+
+    const unsigned char minThr = ui->spinPixMin->value();
+    const unsigned char maxThr = ui->spinPixMax->value();
+
+    overlayRGBThresholded( pixPtr, imgPtr, pixPtr, sz, mScoreColor, minThr, maxThr, false );
+
+    return true;
+}
+
+void AnnotatorWnd::constraintsChangedCallback()
+{
+    if (!ui->groupBoxRestrictPixLabels->isChecked())
+        return;
+
+    mConstraintsDisplayTimer->setSingleShot(true);
+    mConstraintsDisplayTimer->start( 600 );
+    updateImageSlice();
+}
+
+void AnnotatorWnd::constraintsTimerCallback() // timer callback
+{
+    // then process an update so that it 'resumes normal operation'
+    updateImageSlice();
+}
+
 void AnnotatorWnd::updateImageSlice()
 {
     QImage qimg;
 
     mVolumeData.QImageSlice( mCurZSlice, qimg );
+
+    if (constraintsUpdateImagesliceCallback(qimg))
+    {
+        // just update and return
+        ui->labelImg->setImage(qimg);
+        return;
+    }
+
 
     // score overlay?
     if ( mScoreImageEnabled )

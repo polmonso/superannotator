@@ -114,6 +114,20 @@ public:
     // returns one string per class name
     void                    getLabelClassList( QStringList &sList );
 
+
+private:
+    QTimer  *mConstraintsDisplayTimer;  // to keep track of a timeout to show some overlays
+
+    // called before redrawing, should ckec if the timer hasn't expired
+    //  and do necessary drawing. returns true if the image was modified,
+    //  so that nothing else is drawn
+    bool    constraintsUpdateImagesliceCallback(QImage &slice);
+
+public slots:
+    void    constraintsTimerCallback(); // timer callback
+    void    constraintsChangedCallback();   // called everytime constraints are changed
+    void    constraintsChangedCallback(int) { constraintsChangedCallback(); }
+
 public slots:
 
     void updateImageSlice();    //updates the label widget with mCurZSlice slice
