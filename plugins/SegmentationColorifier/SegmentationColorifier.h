@@ -67,14 +67,23 @@ public slots:
                                   128, 0, 255, 1, &ok );
         if (!ok) return;
 
+
+        int minCCSize = QInputDialog::getInteger( 0, "Minimum CC Size", "Specify minimum CC size:",
+                                  1000, 0, 1000000, 1, &ok );
+        if (!ok) return;
+
+
         // ---- Begin ITK processing: Threshold + CC
         typedef unsigned int LabelScalarType;
 
         Matrix3D<LabelScalarType> CCMatrix;
         LabelScalarType labelCount;
 
+        // we need to store info to remove small regions
+        std::vector<ShapeStatistics<itk::ShapeLabelObject<LabelScalarType, 3> > >   shapeDescr;
+
         scoreMatrix.createLabelMap<LabelScalarType>( thr, 255, &CCMatrix,
-                                                  false, &labelCount );
+                                                  false, &labelCount, &shapeDescr );
 
         qDebug("CC regions: %d", (int)labelCount);
 
@@ -117,7 +126,7 @@ public slots:
             // WARNING: assuming same searching order-- could be wrong!!
             while( (! labelsIterator.IsAtEnd()) && (!rgbIterator.IsAtEnd()) )
             {
-                if (labelsIterator.Value() == 0)
+                if ((labelsIterator.Value() == 0) || ( shapeDescr[labelsIterator.Value() - 1].numVoxels() < minCCSize ) )
                     rgbIterator.Set( nullRGB );
                 else
                 {
