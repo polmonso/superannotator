@@ -60,7 +60,8 @@ struct
 } static mLabelListData;
 
 
-static PluginServicesList  mPluginServList;
+static PluginServicesList       mPluginServList;
+static std::vector<QLibrary *>  mPluginLibList; // to free them before exiting
 
 // list of overlay volumes, we use ptrs because it has no copy xtor
 std::vector< Matrix3D<OverlayType> * >  mOverlayVolumeList;
@@ -201,7 +202,18 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     connect(ui->dialLabelOverlayTransp,SIGNAL(valueChanged(int)),this,SLOT(dialOverlayTransparencyMoved(int)));
 
-    connect(ui->butGenSV, SIGNAL(clicked()), this, SLOT(genSupervoxelClicked()));
+    //connect(ui->butGenSV, SIGNAL(clicked()), this, SLOT(genSupervoxelClicked()));
+
+    // ---- Create supervoxel menu
+    QMenu *testMenu = new QMenu(this);
+
+    connect( testMenu->addAction("Local (current view)"), SIGNAL(triggered()), this, SLOT(genSupervoxelClicked()) );
+    connect( testMenu->addAction("Global"), SIGNAL(triggered()), this, SLOT(genSuperVoxelWholeVolumeClicked()) );
+    connect( testMenu->addAction("Save global to file..."), SIGNAL(triggered()), this, SLOT(saveSuperVoxelWholeVolumeClicked()) );
+    connect( testMenu->addAction("Load global from file..."), SIGNAL(triggered()), this, SLOT(loadSuperVoxelWholeVolumeClicked()) );
+
+
+    ui->butGenSV->setMenu(testMenu);
 
     connect( ui->butConnectivityRun, SIGNAL(clicked()), this, SLOT(butRunConnectivityCheckNowClicked()) );
 
@@ -374,38 +386,43 @@ void AnnotatorWnd::scanPlugins( const QString &pluginFolder )
     qDebug() << "Plugin folder: " << pluginFolder;
 
     QFileInfoList list = dir.entryInfoList();
-    for (int i = 0; i < list.size(); ++i) {
+    for (int i = 0; i < list.size(); ++i)
+    {
         QFileInfo fileInfo = list.at(i);
 
         QString absFilePath = fileInfo.absoluteFilePath();
         if ( !QLibrary::isLibrary( absFilePath ) )
             continue;
 
-        QLibrary library( absFilePath );
-        if (!library.load()) {
-            qDebug() << "Could not load plugin " << absFilePath << ":" << library.errorString();
+        QLibrary *library = new QLibrary( absFilePath, this );
+        if (!library->load()) {
+            qDebug() << "Could not load plugin " << absFilePath << ":" << library->errorString();
             continue;
         }
 
         typedef PluginBase*(*PluginCreateFunction)(void);
 
-        PluginCreateFunction createPlugin = (PluginCreateFunction) library.resolve("createPlugin");
+        PluginCreateFunction createPlugin = (PluginCreateFunction) library->resolve("createPlugin");
 
         if (createPlugin == 0) {
             qDebug() << "Could not resolve entry point for plugin " << absFilePath;
             continue;
         }
 
-
         PluginBase *newPlugin = createPlugin();
+
         mPluginServList.append( PluginServices( newPlugin->pluginName(), this ) );
         bool ret = newPlugin->initializePlugin( mPluginServList.last() );
 
-        if (!ret) {
+        mPluginLibList.push_back( library );
+
+        if (!ret)
+        {
             qDebug() << "Initialization failed for " << absFilePath;
             continue;
         }
     }
+
 
     if ( mPluginServList.isEmpty() )
         ui->menuPlugins->addAction( "No plugins loaded" )->setEnabled(false);
@@ -661,6 +678,94 @@ public:
          QMetaObject::invokeMethod( mParent, "statusBarMsg", Qt::QueuedConnection, Q_ARG( QString, QString("Done: %1 supervoxels generated.").arg( mSVox.numLabels() ) ) );
      }
 };
+
+void AnnotatorWnd::loadSuperVoxelWholeVolumeClicked()
+{
+    QString fileName = QFileDialog::getOpenFileName( this, "Load supervoxel data", mSettingsData.loadPathScores, "nrrd (*.nrrd)" );
+
+    if (fileName.isEmpty())
+        return;
+
+    std::string stdFName = fileName.toLocal8Bit().constData();
+
+    if (!mSVoxel.load( stdFName )) {
+        QMessageBox::critical(this, "Cannot open file", QString("%1 could not be read.").arg(fileName));
+        return;
+    }
+
+    if ( (mSVoxel.pixelToVoxel().width() != mVolumeData.width()) || (mSVoxel.pixelToVoxel().height() != mVolumeData.height()) || (mSVoxel.pixelToVoxel().depth() != mVolumeData.depth()) )
+    {
+        QMessageBox::critical(this, "Dimensions do not match", "Supervoxel volume does not match original volume dimensions. Re-setting supervoxels.");
+        mSVRegion.valid = false;
+        updateImageSlice();
+        return;
+    }
+
+    mSVRegion.valid = true;
+    mSVRegion.corner.x = mSVRegion.corner.y = mSVRegion.corner.z = 0;
+
+    mSVRegion.size.x = mVolumeData.width();
+    mSVRegion.size.y = mVolumeData.height();
+    mSVRegion.size.z = mVolumeData.depth();
+
+    updateImageSlice();
+    statusBarMsg("Supervoxel data loaded successfully.");
+}
+
+void AnnotatorWnd::saveSuperVoxelWholeVolumeClicked()
+{
+    bool isOk = true;
+
+    if (!mSVRegion.valid)   isOk = false;
+    if ( (mSVRegion.corner.x != 0) || (mSVRegion.corner.y != 0) || (mSVRegion.corner.z != 0) ) isOk = false;
+    if ( mSVRegion.size.x != mVolumeData.width() )  isOk = false;
+    if ( mSVRegion.size.y != mVolumeData.height() )  isOk = false;
+    if ( mSVRegion.size.z != mVolumeData.depth() )  isOk = false;
+
+    if (!isOk)
+    {
+        QMessageBox::critical(this, "Error", "Global supervoxels must be computed before saving them.");
+        return;
+    }
+
+
+    QString fileName = QFileDialog::getSaveFileName( this, "Save supervoxel data", mSettingsData.savePath, "nrrd (*.nrrd)" );
+
+    if (fileName.isEmpty())
+        return;
+
+    if (!fileName.endsWith(".nrrd"))
+        fileName += ".nrrd";
+
+    std::string stdFName = fileName.toLocal8Bit().constData();
+
+    if (!mSVoxel.save( stdFName )) {
+        statusBarMsg(QString("Error saving to ") + fileName, 0 );
+        return;
+    }
+    else
+        statusBarMsg("Supervoxel data saved successfully.");
+}
+
+void AnnotatorWnd::genSuperVoxelWholeVolumeClicked()
+{
+    // set region to whole cube
+    mSVRegion.valid = true;
+    mSVRegion.corner.x = mSVRegion.corner.y = mSVRegion.corner.z = 0;
+
+    mSVRegion.size.x = mVolumeData.width();
+    mSVRegion.size.y = mVolumeData.height();
+    mSVRegion.size.z = mVolumeData.depth();
+
+
+    mSelectedSV.valid = false;
+
+    SupervoxelThread *thread = new SupervoxelThread( this, mSVoxel, mVolumeData, ui->spinSVSeed->value(), ui->spinSVCubeness->value() );
+
+    connect( thread, SIGNAL(finished()), this, SLOT(updateImageSlice()) );
+
+    runThreadWithProgress<SupervoxelThread>( this, thread );
+}
 
 void AnnotatorWnd::genSupervoxelClicked()
 {

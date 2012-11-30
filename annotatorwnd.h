@@ -156,6 +156,9 @@ public slots:
     void fillLabelComboBox( int numLabels );
 
     void genSupervoxelClicked();
+    void genSuperVoxelWholeVolumeClicked();
+    void loadSuperVoxelWholeVolumeClicked();
+    void saveSuperVoxelWholeVolumeClicked();
 
     void actionSaveAnnotTriggered();
     void actionLoadAnnotTriggered();
