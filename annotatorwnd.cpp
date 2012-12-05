@@ -60,6 +60,7 @@ struct
 } static mLabelListData;
 
 
+static std::vector<PluginBase *> mPluginBaseList;
 static PluginServicesList       mPluginServList;
 static std::vector<QLibrary *>  mPluginLibList; // to free them before exiting
 
@@ -410,6 +411,7 @@ void AnnotatorWnd::scanPlugins( const QString &pluginFolder )
         }
 
         PluginBase *newPlugin = createPlugin();
+        mPluginBaseList.push_back( newPlugin );
 
         mPluginServList.append( PluginServices( newPlugin->pluginName(), this ) );
         bool ret = newPlugin->initializePlugin( mPluginServList.last() );
@@ -1463,6 +1465,10 @@ void AnnotatorWnd::labelImageMouseMoveEvent(QMouseEvent * e)
 
     if (!invalid)
         updateCursorPixelInfo( x, y, mCurZSlice );
+
+    // call plugin mouse move event
+    for (unsigned i=0; i < mPluginBaseList.size(); i++)
+        mPluginBaseList[i]->mouseMoveEvent( e, x, y, mCurZSlice );
 
     if(invalid || (!mSVRegion.valid))
     {

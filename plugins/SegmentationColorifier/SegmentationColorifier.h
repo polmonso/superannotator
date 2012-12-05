@@ -19,7 +19,7 @@
 #include <itkImageRegionConstIterator.h>
 #include <itkImageRegionIterator.h>
 #include <itkExceptionObject.h>
-
+#include <QMouseEvent>
 
 class SegmentationColorifier : public PluginBase
 {
@@ -44,6 +44,22 @@ public:
     // must return the plugin's name
     QString pluginName() {
         return "Segmentation Colorifier";
+    }
+
+    virtual void  mouseMoveEvent( QMouseEvent *evt, unsigned int imgX, unsigned int imgY, unsigned int imgZ )
+    {
+        /*if ( (evt->buttons() & Qt::LeftButton) == 0 )
+            return;
+
+        Matrix3D<ScoreType> &scoreMatrix = mPluginServices->getOverlayVolumeData(0);
+
+        if (scoreMatrix.isEmpty())
+            scoreMatrix.reallocSizeLike( mPluginServices->getVolumeVoxelData() );
+
+        scoreMatrix( imgX, imgY, imgZ ) = 255;
+
+        mPluginServices->setOverlayVisible( 0, true );
+        mPluginServices->updateDisplay();*/
     }
 
 public slots:

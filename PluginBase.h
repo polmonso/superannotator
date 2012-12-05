@@ -25,6 +25,16 @@ public:
 
     // must return the plugin's name
     virtual QString pluginName() = 0;
+
+    // called on mouse move
+    virtual void  mouseMoveEvent( QMouseEvent *evt, unsigned int imgX, unsigned int imgY, unsigned int imgZ )
+    {
+        // don't do anything default
+        (void) evt;
+        (void) imgX;
+        (void) imgY;
+        (void) imgZ;
+    }
 };
 
 
