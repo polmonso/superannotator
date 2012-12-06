@@ -469,8 +469,7 @@ public:
         qimg = QImage( width(), height(), QImage::Format_RGB32 );
         unsigned int sz = width()*height();
 
-        //unsigned int *dataPtr = (unsigned int *) qimg.constBits(); //trick!
-        unsigned int *dataPtr = (unsigned int *) qimg.bits(); //trick!
+        unsigned int *dataPtr = (unsigned int *) qimg.constBits(); //trick!
 
         const unsigned char *p = sliceData(z);
 
