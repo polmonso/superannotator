@@ -58,6 +58,7 @@ void MainWindow::updateEdgeMap()
                                 lowerTh, upperTh,
                                 cannyMap,
                                 gaussianVariance);
+    printf("Canny map computed. Copying data...\n");
 
     Matrix3D<OverlayType> &ovMatrix = mPluginServices->getOverlayVolumeData(volume_idx);
 

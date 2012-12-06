@@ -1183,7 +1183,8 @@ bool AnnotatorWnd::constraintsUpdateImagesliceCallback(QImage &slice)
         return false;
 
     const PixelType *imgPtr = mVolumeData.sliceData( mCurZSlice );
-    unsigned int *pixPtr = (unsigned int *) slice.constBits(); // trick!
+    //unsigned int *pixPtr = (unsigned int *) slice.constBits(); // trick!
+    unsigned int *pixPtr = (unsigned int *) slice.bits(); // trick!
     unsigned int sz = mVolumeData.width() * mVolumeData.height();
 
     const unsigned char minThr = ui->spinPixMin->value();
@@ -1239,7 +1240,8 @@ void AnnotatorWnd::updateImageSlice()
         {
             // use as red channel
             const PixelType *scorePtr = mScoreImage.sliceData( mCurZSlice );
-            unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
+            //unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
+            unsigned int *pixPtr = (unsigned int *) qimg.bits(); // trick!
             unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
 
             const unsigned char minThr = ui->spinScoreThrAbove->value();
@@ -1261,7 +1263,8 @@ void AnnotatorWnd::updateImageSlice()
             continue;
 
         const OverlayType *scorePtr = mOverlayVolumeList[i]->sliceData( mCurZSlice );
-        unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
+        //unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
+        unsigned int *pixPtr = (unsigned int *) qimg.bits(); // trick!
         unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
 
         overlayRGB( pixPtr, scorePtr, pixPtr, sz, mOverlayColorList.getColor(i) );
@@ -1275,7 +1278,8 @@ void AnnotatorWnd::updateImageSlice()
         int floatTranspInv = 256 - floatTransp;
 
         const LabelType *lblPtr = mVolumeLabels.sliceData( mCurZSlice );
-        unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
+        //unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
+        unsigned int *pixPtr = (unsigned int *) qimg.bits(); // trick!
 
         unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
         int maxLabel = (int) mLblColorList.count();

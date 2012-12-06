@@ -24,11 +24,13 @@ public:
         mPluginServices = &pServices;
 
         /** Add a menu item **/
+        /*
         for (unsigned int i=0; i < mPluginServices->getMaxOverlayVolumes(); i++) {
             QAction *action = mPluginServices->getPluginMenu()->addAction( QString("Random labels to overlay %1").arg(i+1) );
             action->setData( i );
             connect( action, SIGNAL(triggered()), this, SLOT(randomLabelsClicked()) );
         }
+        */
 
         /** Add a menu item **/
         QAction *action = mPluginServices->getPluginMenu()->addAction( "Show message box" );
@@ -44,43 +46,31 @@ public:
 
     virtual void  mouseMoveEvent( QMouseEvent *evt, unsigned int imgX, unsigned int imgY, unsigned int imgZ )
     {
-        if ( (evt->buttons() & Qt::LeftButton) == 0 )
+        if ( (evt->buttons() & Qt::LeftButton) == 0)
             return;
 
         Matrix3D<ScoreType> &scoreMatrix = mPluginServices->getOverlayVolumeData(0);
 
         if (scoreMatrix.isEmpty())
+        {
             scoreMatrix.reallocSizeLike( mPluginServices->getVolumeVoxelData() );
+            scoreMatrix.fill(0);
+        }
 
-        scoreMatrix( imgX, imgY, imgZ ) = 255;
+        if ( (evt->buttons() & Qt::LeftButton) == 0  && evt->modifiers() & Qt::ShiftModifier) {
+            scoreMatrix( imgX, imgY, imgZ ) = 0;
+        }
+        else {
+            scoreMatrix( imgX, imgY, imgZ ) = 255;
+        }
 
         mPluginServices->setOverlayVisible( 0, true );
         mPluginServices->updateDisplay();
     }
 
+    void runGraphCuts();
+
 public slots:
-    void randomLabelsClicked()
-    {
-        QAction *action = qobject_cast<QAction *>(sender());
-        unsigned int idx = action->data().toUInt();
-
-        qDebug("Overlay %d", idx);
-
-        Matrix3D<OverlayType> &ovMatrix = mPluginServices->getOverlayVolumeData( idx );
-
-        // MUST BE RESIZED!
-        ovMatrix.reallocSizeLike( mPluginServices->getVolumeVoxelData() );
-
-        LabelType *dPtr = ovMatrix.data();
-
-        for (unsigned int i=0; i < ovMatrix.numElem(); i++)
-            dPtr[i] = rand() % 128;
-
-        // set enabled
-        mPluginServices->setOverlayVisible( idx, true );
-
-        mPluginServices->updateDisplay();
-    }
 
     void showMsgBoxClicked()
     {
