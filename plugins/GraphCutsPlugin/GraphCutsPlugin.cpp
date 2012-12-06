@@ -1,5 +1,6 @@
 #include "GraphCutsPlugin.h"
 #include "graphCut.h"
+#include "gaussianFilter.cxx"
 
 #include <vector>
 
@@ -39,11 +40,16 @@ void GraphCutsPlugin::runGraphCuts()
 
     Matrix3D<PixelType>& volData = mPluginServices->getVolumeVoxelData();
 
+    // get weight image
+    float gaussianVariance = 1.0;
+    uchar* outputWeightImage = 0;
+    gradientMagnitude(volData.data(), volData.width(), volData.height(), volData.depth(), 1, gaussianVariance, outputWeightImage);
+
     Cube cGCWeight;
     cGCWeight.width = volData.width();
     cGCWeight.height = volData.height();
     cGCWeight.depth = volData.depth();
-    cGCWeight.data = 0; // TODO: get weight image
+    cGCWeight.data = outputWeightImage;
     cGCWeight.wh = volData.width()*volData.height();
     GraphCut g;
     g.extractSubCube(volData.data(),
