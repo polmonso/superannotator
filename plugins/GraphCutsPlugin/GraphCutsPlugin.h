@@ -24,13 +24,11 @@ public:
         mPluginServices = &pServices;
 
         /** Add a menu item **/
-        /*
         for (unsigned int i=0; i < mPluginServices->getMaxOverlayVolumes(); i++) {
-            QAction *action = mPluginServices->getPluginMenu()->addAction( QString("Random labels to overlay %1").arg(i+1) );
+            QAction *action = mPluginServices->getPluginMenu()->addAction( QString("Run %1").arg(i+1) );
             action->setData( i );
-            connect( action, SIGNAL(triggered()), this, SLOT(randomLabelsClicked()) );
+            connect( action, SIGNAL(triggered()), this, SLOT(runGraphCuts()) );
         }
-        */
 
         /** Add a menu item **/
         QAction *action = mPluginServices->getPluginMenu()->addAction( "Show message box" );
@@ -68,9 +66,9 @@ public:
         mPluginServices->updateDisplay();
     }
 
-    void runGraphCuts();
-
 public slots:
+
+    void runGraphCuts();
 
     void showMsgBoxClicked()
     {
