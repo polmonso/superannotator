@@ -127,18 +127,25 @@ void GraphCutsPlugin::runGraphCuts()
                 if(scoreMatrix(x,y,z) == 255) {
                     sourcePoints.push_back(p);
                 } else {
-                    sinkPoints.push_back(p);
+                    if(scoreMatrix(x,y,z) == 128) {
+                       sinkPoints.push_back(p);
+                    }
                 }
             }
         }
     }
 
-    if(sourcePoints.size() == 0 || sinkPoints.size() == 0) {
+    if(sourcePoints.size() == 0) {
+        printf("[Main] Error: 0 source points\n");
+        return;
+    }
+    if(sinkPoints.size() == 0) {
+        printf("[Main] Error: 0 sink points\n");
         return;
     }
 
-    float sigma = 1;
-    int seedRadius = 1;
+    float sigma = 100;
+    int seedRadius = 3;
 
     Matrix3D<PixelType>& volData = mPluginServices->getVolumeVoxelData();
 
@@ -149,11 +156,15 @@ void GraphCutsPlugin::runGraphCuts()
 
     uchar* outputWeightImage = 0;
     cubeFloat2Uchar(foutputWeightImage,outputWeightImage,volData.width(), volData.height(), volData.depth());
-
     exportTIFCube(outputWeightImage,"outputWeightImage",volData.depth(),volData.height(),volData.width());
 
-    const int volume_idx = 0;
-    Matrix3D<OverlayType> &ovMatrix = mPluginServices->getOverlayVolumeData(volume_idx);
+    const int idx_binary_cube = 1;
+    Matrix3D<OverlayType> &binData = mPluginServices->getOverlayVolumeData(idx_binary_cube);
+
+    exportTIFCube(binData.data(),"temp_binCube",volData.depth(),volData.height(),volData.width());
+
+    const int idx_new_overlay = 2;
+    Matrix3D<OverlayType> &ovMatrix = mPluginServices->getOverlayVolumeData(idx_new_overlay);
 
     // MUST BE RESIZED!
     ovMatrix.reallocSizeLike(volData);
@@ -168,7 +179,7 @@ void GraphCutsPlugin::runGraphCuts()
     delete[] foutputWeightImage;
 
     // set enabled
-    mPluginServices->setOverlayVisible( volume_idx, true );
+    mPluginServices->setOverlayVisible( idx_new_overlay, true );
 
     mPluginServices->updateDisplay();
 
@@ -179,10 +190,12 @@ void GraphCutsPlugin::runGraphCuts()
     cGCWeight.data = outputWeightImage;
     cGCWeight.wh = volData.width()*volData.height();
     GraphCut g;
-    g.extractSubCube(volData.data(),
+    printf("[Main] Extracting sub-cube\n");
+    g.extractSubCube(binData.data(),
                    cGCWeight.data,
                    sourcePoints,sinkPoints,
                    cGCWeight.width,cGCWeight.height,cGCWeight.depth);
+    printf("[Main] Running max-flow with %ld sources and %ld sinks\n", sourcePoints.size(), sinkPoints.size());
     g.run_maxflow(&cGCWeight,sourcePoints,sinkPoints,sigma,seedRadius);
 
     unsigned char* output_data1d = 0;
@@ -213,6 +226,7 @@ void GraphCutsPlugin::runGraphCuts()
     //ulong cubeSize = volData.numElem();
     output_data1d = new uchar[cubeSize];
     //memcpy(output_data1d,pOriginalImage->getRawData(),cubeSize);
+    printf("Applying cut\n");
     g.applyCut(&originalCube,output_data1d);
 
     exportTIFCube(output_data1d,"output_data1d",volData.depth(),volData.height(),volData.width());

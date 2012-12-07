@@ -56,9 +56,11 @@ public:
         }
 
         if ( (evt->buttons() & Qt::LeftButton) == 0  && evt->modifiers() & Qt::ShiftModifier) {
-            scoreMatrix( imgX, imgY, imgZ ) = 0;
+            printf("128\n");
+            scoreMatrix( imgX, imgY, imgZ ) = 128;
         }
         else {
+            printf("255\n");
             scoreMatrix( imgX, imgY, imgZ ) = 255;
         }
 

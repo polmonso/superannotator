@@ -156,7 +156,6 @@ void GraphCut::run_maxflow(Cube* cube,
                            vector<Point>& sourcePoints, vector<Point>& sinkPoints,
                            float sigma, int minDist)
 {
-  int i;
   float weightToSource;
   float weightToSink;
   float weight;
@@ -170,10 +169,10 @@ void GraphCut::run_maxflow(Cube* cube,
 
   if(subCube)
     {
-      printf("Performing maxflow on sub-cube\n");
-      printf("Original size=(%ld,%ld,%ld)\n",cube->width,cube->height,cube->depth);
+      printf("[GraphCuts] Performing maxflow on sub-cube\n");
+      printf("[GraphCuts] Original size=(%ld,%ld,%ld)\n",cube->width,cube->height,cube->depth);
       cube = subCube;
-      printf("New size=(%ld,%ld,%ld)\n",cube->width,cube->height,cube->depth);
+      printf("[GraphCuts] New size=(%ld,%ld,%ld)\n",cube->width,cube->height,cube->depth);
     }
 
   ni = cube->width;
@@ -182,28 +181,26 @@ void GraphCut::run_maxflow(Cube* cube,
   nij = ni*nj;
 
   // Free memory
-  if(m_node_ids!=0)
-    {
+  if(m_node_ids!=0) {
       delete[] m_node_ids;
-    }
-  if(m_graph!=0)
+  }
+  if(m_graph!=0) {
     delete m_graph;
+  }
 
-
-  printf("GraphCut : graph size = (%d,%d,%d)\n", ni, nj, nk);
+  printf("[GraphCuts] graph size = (%d,%d,%d)\n", ni, nj, nk);
 
   // TODO : Compute correct parameters
-  int nNodes = ni*nj*nk;
-  int nEdges = nNodes*3;
+  ulong nNodes = ni*nj*nk;
+  ulong nEdges = nNodes*3;
   m_graph = new GraphType(nNodes, nEdges);
 
   m_node_ids = new GraphType::node_id[nNodes];
-  for(i = 0;i<nNodes;i++)
-    {
+  for(ulong i = 0;i < nNodes; i++) {
       m_node_ids[i] = m_graph->add_node();
-    }
+  }
 
-  printf("GraphCut : Nodes added\n");
+  printf("[GraphCuts] %d nodes added\n", nNodes);
 
 //#define USE_HISTOGRAM
 
@@ -276,7 +273,7 @@ void GraphCut::run_maxflow(Cube* cube,
                   dist = (seedX-i)*(seedX-i) + (seedY-j)*(seedY-j) + (seedZ-k)*(seedZ-k);
                   if(dist <= minDist)
                     {
-                      //printf("Source found %d %d %d\n", i, j, k);
+                      printf("[GraphCuts] Source found %d %d %d\n", i, j, k);
                       weightToSource = K;
                       break;
                     }
@@ -291,7 +288,7 @@ void GraphCut::run_maxflow(Cube* cube,
                   dist = (seedX-i)*(seedX-i) + (seedY-j)*(seedY-j) + (seedZ-k)*(seedZ-k);
                   if(dist <= minDist)
                     {
-                      //printf("Sink found %d %d %d\n", i, j, k);
+                      printf("[GraphCuts] Sink found %d %d %d\n", i, j, k);
                       weightToSink = K;
                       break;
                     }
@@ -357,7 +354,9 @@ void GraphCut::run_maxflow(Cube* cube,
         }
     }
 
-  printf("GraphCut : Computing max flow\n");
+  printf("[GraphCuts] %d edges added\n", nEdges);
+
+  printf("[GraphCuts] Computing max flow\n");
   int flow = m_graph->maxflow();
 
 #if 0
@@ -401,6 +400,6 @@ void GraphCut::run_maxflow(Cube* cube,
   delete[] histoSink;
 #endif
 
-  printf("GraphCut : Max flow=%d\n", flow);
+  printf("[GraphCuts] Max flow=%d\n", flow);
   running_maxflow = false;
 }
