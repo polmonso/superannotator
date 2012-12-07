@@ -45,7 +45,7 @@ public:
     virtual void  mouseMoveEvent( QMouseEvent *evt, unsigned int imgX, unsigned int imgY, unsigned int imgZ )
     {
         if ( (evt->buttons() & Qt::LeftButton) == 0)
-            return;
+           return;
 
         Matrix3D<ScoreType> &scoreMatrix = mPluginServices->getOverlayVolumeData(0);
 
@@ -55,7 +55,7 @@ public:
             scoreMatrix.fill(0);
         }
 
-        if ( (evt->buttons() & Qt::LeftButton) == 0  && evt->modifiers() & Qt::ShiftModifier) {
+        if (evt->modifiers() & Qt::ShiftModifier) {
             printf("128\n");
             scoreMatrix( imgX, imgY, imgZ ) = 128;
         }
