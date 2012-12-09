@@ -10,8 +10,7 @@
 #include <sstream>
 #include <vector>
 #include <float.h>
-//#include <cv.h>
-//#include <highgui.h>
+#include "utils.h"
 
 // ITK Header Files
 #include "itkConnectedComponentFunctorImageFilter.h"
@@ -48,6 +47,7 @@ struct Cube
   ulong depth;
   ulong wh; //width*height
   unsigned char* data;
+  bool deleteData;
 
   //unsigned char at(int i, int j, int k)
   int at(int i, int j, int k)
@@ -55,9 +55,15 @@ struct Cube
     return (int)data[k*wh+j*width+i];
   }
 
+  Cube() { deleteData = false; }
+
+  Cube(bool _deleteData) { deleteData = _deleteData; }
+
   ~Cube()
   {
-    delete[] data;
+    if(deleteData && data) {
+        delete[] data;
+    }
   }
 };
 
@@ -223,27 +229,36 @@ void GraphCut::extractSubCube(TInputPixelType* inputData,
   typename LabelImageType::IndexType indexType = region.GetIndex();
   typename LabelImageType::SizeType sizeType = region.GetSize();
 
-  ulong cubeSize = sizeType[0]*sizeType[1]*sizeType[2];
+  ulong sub_cubeSize = sizeType[0]*sizeType[1]*sizeType[2];
   subX = indexType[0];
   subY = indexType[1];
   subZ = indexType[2];
   printf("Setting sub-cube. position=(%ld,%ld,%ld)\n", subX, subY, subZ);
   subCube = new Cube;
-  subCube->data = new uchar[cubeSize];
+  subCube->data = new uchar[sub_cubeSize];
   subCube->width = sizeType[0];
   subCube->height = sizeType[1];
   subCube->depth = sizeType[2];
 
   ulong sliceSize = nx*ny;
+  ulong cubeSize = nx*ny*nz;
   ulong cubeIdx = 0;
   ulong inputIdx;
-  for(int i=0; i < subCube->width; i++)
-    for(int j=0; j < subCube->height; j++)
-      for(int k=0; k < subCube->depth; k++,cubeIdx++)
+  for(int k = 0; k < subCube->depth; k++)
+    for(int j = 0; j < subCube->height; j++)
+      for(int i = 0; i < subCube->width; i++)
         {
           inputIdx = (k+subZ)*sliceSize + (j+subY)*nx + (i+subX);
+          if(inputIdx>=cubeSize) {
+              printf("inputIdx>=cubeSize (%d %d %d) (%d %d %d) (%d %d %d) (%d %d %d) %ld %ld\n",
+                      i, j, k, subX, subY, subZ, nx, ny, nz, sizeType[0], sizeType[1], sizeType[2], inputIdx, cubeSize);
+          }
+          assert(inputIdx<cubeSize);
           subCube->data[cubeIdx] = weights[inputIdx];
+          ++cubeIdx;
         }
+
+  exportTIFCube(subCube->data, "subCube", subCube->depth, subCube->height, subCube->width);
 }
 
 

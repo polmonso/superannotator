@@ -10,6 +10,8 @@
 #include <QMessageBox>
 #include <QMouseEvent>
 
+using namespace std;
+
 class GraphCutsPlugin : public PluginBase
 {
     Q_OBJECT
@@ -47,6 +49,8 @@ public:
         if ( (evt->buttons() & Qt::LeftButton) == 0)
            return;
 
+        printf("%d %d %d\n", imgX, imgY, imgZ);
+
         Matrix3D<ScoreType> &scoreMatrix = mPluginServices->getOverlayVolumeData(0);
 
         if (scoreMatrix.isEmpty())
@@ -56,12 +60,25 @@ public:
         }
 
         if (evt->modifiers() & Qt::ShiftModifier) {
-            printf("128\n");
-            scoreMatrix( imgX, imgY, imgZ ) = 128;
+            for(int x = max(0, (int)imgX - 1); x <= min(scoreMatrix.width()-1, imgX + 1); ++x) {
+                for(int y = max(0, (int)imgY - 1); y <= min(scoreMatrix.height()-1, imgY + 1); ++y) {
+                    for(int z = max(0, (int)imgZ - 1); z <= min(scoreMatrix.depth()-1, imgZ + 1); ++z) {
+                        scoreMatrix(x,y,z) = 128;
+                    }
+                }
+            }
+           // scoreMatrix( imgX, imgY, imgZ ) = 128;
         }
         else {
-            printf("255\n");
-            scoreMatrix( imgX, imgY, imgZ ) = 255;
+            for(int x = max(0, (int)imgX - 1); x <= min(scoreMatrix.width()-1, imgX + 1); ++x) {
+                for(int y = max(0, (int)imgY - 1); y <= min(scoreMatrix.height()-1, imgY + 1); ++y) {
+                    for(int z = max(0, (int)imgZ - 1); z <= min(scoreMatrix.depth()-1, imgZ + 1); ++z) {
+                        scoreMatrix(x,y,z) = 255;
+                    }
+                }
+            }
+
+            //scoreMatrix( imgX, imgY, imgZ ) = 255;
         }
 
         mPluginServices->setOverlayVisible( 0, true );

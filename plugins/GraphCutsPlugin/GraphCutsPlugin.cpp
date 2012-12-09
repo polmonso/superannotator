@@ -3,6 +3,8 @@
 #include "gaussianFilter.cxx"
 
 #include <vector>
+#include "utils.h"
+
 
 #include "itkImage.h"
 #include "itkImageFileWriter.h"
@@ -20,94 +22,6 @@ extern "C" Q_DECL_EXPORT PluginBase* createPlugin();
 PluginBase *createPlugin()
 {
     return new GraphCutsPlugin();
-}
-
-void exportTIFCube(uchar* rawData,
-                   const char* filename,
-                   int cubeDepth,
-                   int cubeHeight,
-                   int cubeWidth)
-{
-  // import data to an itk image
-  const int dimension = 3;
-  typedef uchar TInputPixelType;
-  typedef itk::Image< TInputPixelType, dimension > InputImageType;
-  typedef itk::Image< TInputPixelType, dimension > OutputImageType;
-  typedef itk::ImportImageFilter< TInputPixelType, dimension > ImportFilterType;
-  ImportFilterType::Pointer importFilter = ImportFilterType::New();
-
-  ImportFilterType::SizeType size;
-  size[0] = cubeWidth;
-  size[1] = cubeHeight;
-  size[2] = cubeDepth;
-
-  ImportFilterType::IndexType start;
-  start.Fill(0);
-
-  ImportFilterType::RegionType region;
-  region.SetIndex(start);
-  region.SetSize(  size  );
-
-  importFilter->SetRegion( region );
-
-  InputImageType::PointType origin;
-  origin.Fill(0.0);
-
-  importFilter->SetOrigin( origin );
-
-  ImportFilterType::SpacingType spacing;
-  spacing.Fill(1.0);
-
-  importFilter->SetSpacing( spacing );
-  importFilter->SetImportPointer(rawData, 0, false);
-
-  stringstream sout;
-  sout << filename;
-  int n = strlen(filename);
-  if(n < 4 || strcmp(filename+n-4,".tif")!=0)
-     sout << ".tif";
-  //printf("[Utils] Writing output cube %s\n", sout.str().c_str());
-  typedef itk::ImageFileWriter< OutputImageType > WriterType;
-  WriterType::Pointer writer = WriterType::New();
-  writer->SetFileName(sout.str().c_str());
-  writer->SetInput(importFilter->GetOutput());
-  writer->Update();
-}
-
-void cubeFloat2Uchar(float* inputData, uchar*& outputData,
-                     int nx, int ny, int nz)
-{
-  float minValue = FLT_MAX; //9999999999;
-  float maxValue = -1;
-  int cubeIdx = 0;
-  for(int z=0; z < nz; z++)
-    for(int y=0; y < ny; y++)
-      for(int x=0; x < nx; x++)
-        {
-          if(maxValue < inputData[cubeIdx])
-              maxValue = inputData[cubeIdx];
-          if(minValue > inputData[cubeIdx])
-              minValue = inputData[cubeIdx];
-
-          cubeIdx++;
-        }
-
-  printf("[util] cubeFloat2Uchar : min %f, max %f\n", minValue, maxValue);
-
-  // allocate memory
-  //MESSAGE("allocating memory\n");
-  outputData = new uchar[nx*ny*nz];
-
-  // copy to output cube
-  float scale = 255.0f/(maxValue-minValue);
-  cubeIdx = 0;
-  for(int z=0; z < nz; z++)
-    for(int y=0; y < ny; y++)
-      for(int x=0; x < nx; x++)
-        {
-          outputData[cubeIdx] = (inputData[cubeIdx]-minValue)*scale;
-          cubeIdx++;
-        }
 }
 
 void GraphCutsPlugin::runGraphCuts()
@@ -148,6 +62,7 @@ void GraphCutsPlugin::runGraphCuts()
     int seedRadius = 3;
 
     Matrix3D<PixelType>& volData = mPluginServices->getVolumeVoxelData();
+    ulong cubeSize = volData.numElem();
 
     // get weight image
     float gaussianVariance = 1.0;
@@ -157,6 +72,7 @@ void GraphCutsPlugin::runGraphCuts()
     uchar* outputWeightImage = 0;
     cubeFloat2Uchar(foutputWeightImage,outputWeightImage,volData.width(), volData.height(), volData.depth());
     exportTIFCube(outputWeightImage,"outputWeightImage",volData.depth(),volData.height(),volData.width());
+    delete[] foutputWeightImage;
 
     const int idx_binary_cube = 1;
     Matrix3D<OverlayType> &binData = mPluginServices->getOverlayVolumeData(idx_binary_cube);
@@ -169,19 +85,18 @@ void GraphCutsPlugin::runGraphCuts()
     // MUST BE RESIZED!
     ovMatrix.reallocSizeLike(volData);
 
+    /*
     LabelType *dPtr = ovMatrix.data();
     ulong cubeSize = ovMatrix.numElem();
     for(ulong i = 0; i < cubeSize; i++) {
         dPtr[i] = outputWeightImage[i];
     }
-    printf("Done\n");
-    delete[] outputWeightImage;
-    delete[] foutputWeightImage;
 
     // set enabled
     mPluginServices->setOverlayVisible( idx_new_overlay, true );
 
     mPluginServices->updateDisplay();
+    */
 
     Cube cGCWeight;
     cGCWeight.width = volData.width();
@@ -226,12 +141,26 @@ void GraphCutsPlugin::runGraphCuts()
     //ulong cubeSize = volData.numElem();
     output_data1d = new uchar[cubeSize];
     //memcpy(output_data1d,pOriginalImage->getRawData(),cubeSize);
+    memset(output_data1d,0,cubeSize);
     printf("Applying cut\n");
     g.applyCut(&originalCube,output_data1d);
 
+    printf("Exporting cube to output_data1d\n");
     exportTIFCube(output_data1d,"output_data1d",volData.depth(),volData.height(),volData.width());
 
 #endif
 
+    LabelType *dPtr = ovMatrix.data();
+    for(ulong i = 0; i < cubeSize; i++) {
+        dPtr[i] = output_data1d[i];
+    }
 
+    // set enabled
+    mPluginServices->setOverlayVisible( idx_new_overlay, true );
+    mPluginServices->updateDisplay();
+
+    printf("Cleaning\n");
+    delete[] output_data1d;
+    delete[] outputWeightImage;
+    printf("Done\n");
 }

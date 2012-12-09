@@ -13,7 +13,7 @@ GraphCut::GraphCut()
 
 GraphCut::~GraphCut() {
   // Free memory
-  if(m_node_ids!=0)
+  if(m_node_ids != 0)
     {
       delete[] m_node_ids;
     }
@@ -25,20 +25,20 @@ GraphCut::~GraphCut() {
 
 void GraphCut::applyCut(Cube* inputCube, unsigned char* output_data)
 {
-  if(output_data == 0)
-    output_data = inputCube->data;
+    if(output_data == 0) {
+        return;
+    }
 
-  ulong wh = ni*nj;
-  ulong n=wh*nk;
-  
-  ulong nSources = 0;
-  ulong nSinks = 0;
-  for(int cubeIdx=0; cubeIdx<n; cubeIdx++)
-    {
-      if(m_graph->what_segment(m_node_ids[cubeIdx]) == GraphType::SOURCE)
-        nSources++;
-      else
-        nSinks++;
+    ulong wh = ni*nj;
+    ulong n = wh*nk;
+
+    ulong nSources = 0;
+    ulong nSinks = 0;
+    for(int cubeIdx=0; cubeIdx<n; cubeIdx++) {
+        if(m_graph->what_segment(m_node_ids[cubeIdx]) == GraphType::SOURCE)
+            nSources++;
+        else
+            nSinks++;
     }
 
   printf("nSources=%ld, nSinks=%ld\n", nSources,nSinks);
@@ -101,12 +101,16 @@ void GraphCut::applyCut(Cube* inputCube, unsigned char* output_data)
           for(int _z = sz; _z <= ez; _z++)
             {
               cubeIdx = (_z*wh) + (_y*ni) + _x;
-              if(m_graph->what_segment(m_node_ids[cubeIdx]) != nodeType && inputCube->at(_x+subX,_y+subY,_z+subZ) == 255)
+              if(m_graph->what_segment(m_node_ids[cubeIdx]) != nodeType) // && inputCube->at(_x+subX,_y+subY,_z+subZ) == GraphType::SINK)
                 {
                   outputCubeIdx = ((_z+subZ)*inputCube_sliceSize) + ((_y+subY)*inputCube->width) + (_x+subX);
                   //printf("Cutting (%d,%d,%d)\n",_x+subX,_y+subY,_z+subZ);
-                  output_data[outputCubeIdx] = 0;
-                }
+                  output_data[outputCubeIdx] = 255;
+                } else {
+                  outputCubeIdx = ((_z+subZ)*inputCube_sliceSize) + ((_y+subY)*inputCube->width) + (_x+subX);
+                  //printf("Cutting (%d,%d,%d)\n",_x+subX,_y+subY,_z+subZ);
+                  output_data[outputCubeIdx] = 128;
+              }
             }
     }
   printf("applyCut: Done\n");
@@ -210,20 +214,28 @@ void GraphCut::run_maxflow(Cube* cube,
   const int histoSize = 255/nbItemsPerBin;
   float* histoSource = new float[histoSize];
   int binId;
-  memset(histoSource,0,histoSize);
+  memset(histoSource,0,histoSize*sizeof(float));
   for(vector<Point>::iterator itPoint=sourcePoints.begin();
       itPoint != sourcePoints.end();itPoint++)
     {
       binId = (int)cube->at(itPoint->x, itPoint->y, itPoint->z)/nbItemsPerBin - 1;
+      if(binId < 0)
+          binId = 0;
+      if(binId >= histoSize)
+          binId = histoSize - 1;
       histoSource[binId]++;
     }
 
   float* histoSink = new float[histoSize];
-  memset(histoSink,0,histoSize);
+  memset(histoSink,0,histoSize*sizeof(float));
   for(vector<Point>::iterator itPoint=sinkPoints.begin();
       itPoint != sinkPoints.end();itPoint++)
     {
       binId = (int)cube->at(itPoint->x, itPoint->y, itPoint->z)/nbItemsPerBin - 1;
+      if(binId < 0)
+          binId = 0;
+      if(binId >= histoSize)
+          binId = histoSize - 1;
       histoSink[binId]++;
     }
 
@@ -300,16 +312,28 @@ void GraphCut::run_maxflow(Cube* cube,
                   //FIXME : binId !!!!!!!!!!!
                   // Get value from histogram
                   binId = (int)(cube->at(i,j,k)/nbItemsPerBin) - 1;
-                  if(binId >= histoSize)
-                    printf("binId >= histoSize\n");
+                  if(binId >= histoSize) {
+                    printf("binId %d >= histoSize\n", binId);
+                    binId = histoSize - 1;
+                  }
+                  if(binId < 0) {
+                    printf("binId %d < 0\n", binId);
+                    binId = 0;
+                  }
                   weightToSource = histoSource[binId];
                 }
               if(weightToSink != K)
                 {
                   // Get value from histogram
                   binId = (int)(cube->at(i,j,k)/nbItemsPerBin) - 1;
-                  if(binId >= histoSize)
+                  if(binId >= histoSize) {
                     printf("binId >= histoSize\n");
+                    binId = histoSize - 1;
+                  }
+                  if(binId < 0) {
+                    printf("binId < 0\n");
+                    binId = 0;
+                  }
                   weightToSink = histoSink[binId];
                 }
 #endif
@@ -327,8 +351,8 @@ void GraphCut::run_maxflow(Cube* cube,
                   weight = pow(cube->at(i,j,k)-cube->at(i+1,j,k),2.0f);
                   weight = ((weight==0)?MAX_WEIGHT:1.0f/weight)*sigma;
                   m_graph->add_edge(m_node_ids[nodeIdx], m_node_ids[at(i+1,j,k)], weight, weight);
-                  //if(i==4)
-                  //  printf("(%d,%d,%d)-(%d,%d,%d) : %d %d %d %f\n",i,j,k,i+1,j,k,cube->at(i,j,k),cube->at(i+1,j,k),cube->at(i,j,k)-cube->at(i+1,j,k),weight);
+                  if(i==4)
+                    printf("(%d,%d,%d)-(%d,%d,%d) : %d %d %d %f\n",i,j,k,i+1,j,k,cube->at(i,j,k),cube->at(i+1,j,k),cube->at(i,j,k)-cube->at(i+1,j,k),weight);
                   nEdges++;
                 }
 

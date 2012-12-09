@@ -5,11 +5,13 @@ INCLUDEPATH += /home/lucchi/src/EM/superpixels/lib/graphCuts/
 HEADERS += \
     GraphCutsPlugin.h \
     graphCut.h \
+    utils.h \
     ../../PluginBase.h
 
 SOURCES += \
     GraphCutsPlugin.cpp \
-    graphCut.cpp
+    graphCut.cpp \
+    utils.cpp
 
 # ITK PATH
 include(../../customUserDefs.inc)
@@ -104,7 +106,7 @@ LIBS += -luuid
 
 CONFIG(debug, debug|release) {
     #DESTDIR = ../../../supervoxel-annotator-build-desktop/plugins
-    DESTDIR = ../../../supervoxel-annotator-build-desktop-Qt_4_8_1_in_PATH__System__Release/plugins
+    DESTDIR = ../../../supervoxel-annotator-build-desktop-Qt_4_8_1_in_PATH__System__Debug/plugins
 }
 CONFIG(release, debug|release) {
     #DESTDIR = ../../../supervoxel-annotator-build-desktop/plugins
