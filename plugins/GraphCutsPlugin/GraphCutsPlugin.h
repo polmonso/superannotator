@@ -49,8 +49,6 @@ public:
         if ( (evt->buttons() & Qt::LeftButton) == 0)
            return;
 
-        printf("%d %d %d\n", imgX, imgY, imgZ);
-
         Matrix3D<ScoreType> &scoreMatrix = mPluginServices->getOverlayVolumeData(0);
 
         if (scoreMatrix.isEmpty())

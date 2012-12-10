@@ -66,16 +66,25 @@ void GraphCut::applyCut(Cube* inputCube, unsigned char* output_data)
     for(int j = 0;j<nj;j++)
       for(int i = 0;i<ni;i++,cubeIdx++)
         {
-          if(inputCube->at(i+subX,j+subY,k+subZ) != 0) {
+          outputCubeIdx = ((k+subZ)*inputCube_sliceSize) + ((j+subY)*inputCube->width) + (i+subX);
+          if(inputCube->data[outputCubeIdx] != 0) {
+            if(m_graph->what_segment(m_node_ids[cubeIdx]) == nodeType) {
+                output_data[outputCubeIdx] = 128;
+            } else {
+                output_data[outputCubeIdx] = 255;
+            }
+          }
+          /*
+          if(inputCube->data[outputCubeIdx] != 0) {
+          //if(inputCube->at(i+subX,j+subY,k+subZ) != 0) {
               if(m_graph->what_segment(m_node_ids[cubeIdx]) == nodeType)
                 {
-                  /*
-                  Point p;
-                  p.x = i;
-                  p.y = j;
-                  p.z = k;
-                  lNodes.push_back(p);
-                    */
+
+                  //Point p;
+                  //p.x = i;
+                  //p.y = j;
+                  //p.z = k;
+                  //lNodes.push_back(p);
 
                   outputCubeIdx = ((k+subZ)*inputCube_sliceSize) + ((j+subY)*inputCube->width) + (i+subX);
                   //printf("Cutting (%d,%d,%d)\n",_x+subX,_y+subY,_z+subZ);
@@ -86,6 +95,7 @@ void GraphCut::applyCut(Cube* inputCube, unsigned char* output_data)
                   output_data[outputCubeIdx] = 128;
                 }
           }
+          */
         }
 #else
   ulong cubeIdx = 0;
@@ -384,8 +394,8 @@ void GraphCut::run_maxflow(Cube* cube,
                   weight = pow(cube->at(i,j,k)-cube->at(i+1,j,k),2.0f);
                   weight = ((weight==0)?MAX_WEIGHT:1.0f/weight)*sigma;
                   m_graph->add_edge(m_node_ids[nodeIdx], m_node_ids[at(i+1,j,k)], weight, weight);
-                  if(i==4)
-                    printf("(%d,%d,%d)-(%d,%d,%d) : %d %d %d %f\n",i,j,k,i+1,j,k,cube->at(i,j,k),cube->at(i+1,j,k),cube->at(i,j,k)-cube->at(i+1,j,k),weight);
+                  //if(i==4)
+                  //  printf("(%d,%d,%d)-(%d,%d,%d) : %d %d %d %f\n",i,j,k,i+1,j,k,cube->at(i,j,k),cube->at(i+1,j,k),cube->at(i,j,k)-cube->at(i+1,j,k),weight);
                   nEdges++;
                 }
 
