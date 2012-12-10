@@ -118,7 +118,8 @@ void GraphCutsPlugin::runGraphCuts()
     originalCube.width = volData.width();
     originalCube.height = volData.height();
     originalCube.depth = volData.depth();
-    originalCube.data = volData.data();
+    //originalCube.data = volData.data();
+    originalCube.data = binData.data();
     originalCube.wh = originalCube.width*originalCube.height;
 
 #if 0

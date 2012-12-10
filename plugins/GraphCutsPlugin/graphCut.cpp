@@ -58,23 +58,54 @@ void GraphCut::applyCut(Cube* inputCube, unsigned char* output_data)
 
   vector<Point> lNodes(nNodes);
 
+#if 1
+  ulong inputCube_sliceSize = inputCube->width*inputCube->height;
+  ulong outputCubeIdx;
   ulong cubeIdx = 0;
   for(int k=0;k<nk;k++)
     for(int j = 0;j<nj;j++)
       for(int i = 0;i<ni;i++,cubeIdx++)
         {
-          if(m_graph->what_segment(m_node_ids[cubeIdx]) == nodeType)
-            {
-              Point p;
-              p.x = i;
-              p.y = j;
-              p.z = k;
-              lNodes.push_back(p);
-            }
+          if(inputCube->at(i+subX,j+subY,k+subZ) != 0) {
+              if(m_graph->what_segment(m_node_ids[cubeIdx]) == nodeType)
+                {
+                  /*
+                  Point p;
+                  p.x = i;
+                  p.y = j;
+                  p.z = k;
+                  lNodes.push_back(p);
+                    */
+
+                  outputCubeIdx = ((k+subZ)*inputCube_sliceSize) + ((j+subY)*inputCube->width) + (i+subX);
+                  //printf("Cutting (%d,%d,%d)\n",_x+subX,_y+subY,_z+subZ);
+                  output_data[outputCubeIdx] = 255;
+                } else {
+                  outputCubeIdx = ((k+subZ)*inputCube_sliceSize) + ((j+subY)*inputCube->width) + (i+subX);
+                  //printf("Cutting (%d,%d,%d)\n",_x+subX,_y+subY,_z+subZ);
+                  output_data[outputCubeIdx] = 128;
+                }
+          }
         }
+#else
+  ulong cubeIdx = 0;
+  for(int k=0;k<nk;k++)
+    for(int j = 0;j<nj;j++)
+      for(int i = 0;i<ni;i++,cubeIdx++)
+        {
+          //if(m_graph->what_segment(m_node_ids[cubeIdx]) == nodeType) {
+            Point p;
+            p.x = i;
+            p.y = j;
+            p.z = k;
+            lNodes.push_back(p);
+          //}
+        }
+#endif
 
   printf("List of nodes generated. Contains %ld nodes\n",lNodes.size());
 
+#if 0
   const int nh_size = 1;
   int x,y,z;
   int sx,sy,sz;
@@ -100,20 +131,22 @@ void GraphCut::applyCut(Cube* inputCube, unsigned char* output_data)
         for(int _y = sy; _y <= ey; _y++)
           for(int _z = sz; _z <= ez; _z++)
             {
-              cubeIdx = (_z*wh) + (_y*ni) + _x;
-              if(m_graph->what_segment(m_node_ids[cubeIdx]) != nodeType) // && inputCube->at(_x+subX,_y+subY,_z+subZ) == GraphType::SINK)
-                {
-                  outputCubeIdx = ((_z+subZ)*inputCube_sliceSize) + ((_y+subY)*inputCube->width) + (_x+subX);
-                  //printf("Cutting (%d,%d,%d)\n",_x+subX,_y+subY,_z+subZ);
-                  output_data[outputCubeIdx] = 255;
-                } else {
-                  outputCubeIdx = ((_z+subZ)*inputCube_sliceSize) + ((_y+subY)*inputCube->width) + (_x+subX);
-                  //printf("Cutting (%d,%d,%d)\n",_x+subX,_y+subY,_z+subZ);
-                  output_data[outputCubeIdx] = 128;
+              if(inputCube->at(_x+subX,_y+subY,_z+subZ) != 0) {
+                  cubeIdx = (_z*wh) + (_y*ni) + _x;
+                  if(m_graph->what_segment(m_node_ids[cubeIdx]) != nodeType)
+                    {
+                      outputCubeIdx = ((_z+subZ)*inputCube_sliceSize) + ((_y+subY)*inputCube->width) + (_x+subX);
+                      //printf("Cutting (%d,%d,%d)\n",_x+subX,_y+subY,_z+subZ);
+                      output_data[outputCubeIdx] = 255;
+                    } else {
+                      outputCubeIdx = ((_z+subZ)*inputCube_sliceSize) + ((_y+subY)*inputCube->width) + (_x+subX);
+                      //printf("Cutting (%d,%d,%d)\n",_x+subX,_y+subY,_z+subZ);
+                      output_data[outputCubeIdx] = 128;
+                  }
               }
             }
     }
-  printf("applyCut: Done\n");
+#endif
 }
 
 // caller is responsible for freeing memory
