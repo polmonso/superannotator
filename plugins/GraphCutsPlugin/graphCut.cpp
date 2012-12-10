@@ -60,6 +60,7 @@ void GraphCut::applyCut(Cube* inputCube, unsigned char* output_data)
 
 #if 1
   ulong inputCube_sliceSize = inputCube->width*inputCube->height;
+  ulong cubeSize = inputCube_sliceSize*inputCube->depth;
   ulong outputCubeIdx;
   ulong cubeIdx = 0;
   for(int k=0;k<nk;k++)
@@ -67,13 +68,18 @@ void GraphCut::applyCut(Cube* inputCube, unsigned char* output_data)
       for(int i = 0;i<ni;i++,cubeIdx++)
         {
           outputCubeIdx = ((k+subZ)*inputCube_sliceSize) + ((j+subY)*inputCube->width) + (i+subX);
-          if(inputCube->data[outputCubeIdx] != 0) {
+          //output_data[outputCubeIdx] = inputCube->at(i+subX,j+subY,k+subZ);
+
+          assert(outputCubeIdx < cubeSize);
+          if(inputCube->at(i+subX,j+subY,k+subZ) != 0) {
+          //if(inputCube->data[outputCubeIdx] != 0) {
             if(m_graph->what_segment(m_node_ids[cubeIdx]) == nodeType) {
                 output_data[outputCubeIdx] = 128;
             } else {
                 output_data[outputCubeIdx] = 255;
             }
           }
+
           /*
           if(inputCube->data[outputCubeIdx] != 0) {
           //if(inputCube->at(i+subX,j+subY,k+subZ) != 0) {
