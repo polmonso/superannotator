@@ -85,12 +85,10 @@ void GraphCutsPlugin::runGraphCuts()
 
     exportTIFCube(binData.data(),"temp_binCube",volData.depth(),volData.height(),volData.width());
 
+    // copy weight image to overlay
     const int idx_weight_overlay = 2;
     Matrix3D<OverlayType> &weightMatrix = mPluginServices->getOverlayVolumeData(idx_weight_overlay);
-
-    // MUST BE RESIZED!
     weightMatrix.reallocSizeLike(volData);
-
     LabelType *dPtr = weightMatrix.data();
     for(ulong i = 0; i < cubeSize; i++) {
         dPtr[i] = outputWeightImage[i];
@@ -98,8 +96,24 @@ void GraphCutsPlugin::runGraphCuts()
 
     // set enabled
     mPluginServices->setOverlayVisible( idx_weight_overlay, true );
-    mPluginServices->updateDisplay();
+    //mPluginServices->updateDisplay();
 
+    //LabelImageType::Pointer labelInput = getLabelImage<TInputPixelType,LabelImageType>(inputData,nx,ny,nz);
+    LabelImageType::Pointer labelInput = getLabelImage<uchar,LabelImageType>(binData.data(),binData.width(),binData.height(),binData.depth());
+
+    /*
+    LabelImageType* pLabelInput = labelInput.GetPointer();
+
+    // copy label image to overlay
+    const int idx_label_overlay = 4;
+    Matrix3D<OverlayType> &labelMatrix = mPluginServices->getOverlayVolumeData(idx_label_overlay);
+    labelMatrix.reallocSizeLike(volData);
+    dPtr = labelMatrix.data();
+    for(ulong i = 0; i < cubeSize; i++) {
+        dPtr[i] = pLabelInput[i];
+    }
+    mPluginServices->setOverlayVisible( idx_label_overlay, true );
+    */
 
     Cube cGCWeight;
     cGCWeight.width = volData.width();
@@ -110,9 +124,10 @@ void GraphCutsPlugin::runGraphCuts()
     GraphCut g;
     printf("[Main] Extracting sub-cube\n");
     g.extractSubCube(binData.data(),
-                   cGCWeight.data,
-                   sourcePoints,sinkPoints,
-                   cGCWeight.width,cGCWeight.height,cGCWeight.depth);
+                     cGCWeight.data,
+                     labelInput,
+                     sourcePoints,sinkPoints,
+                     cGCWeight.width,cGCWeight.height,cGCWeight.depth);
     printf("[Main] Running max-flow with %ld sources and %ld sinks\n", sourcePoints.size(), sinkPoints.size());
     g.run_maxflow(&cGCWeight,sourcePoints,sinkPoints,sigma,seedRadius);
 
@@ -127,8 +142,10 @@ void GraphCutsPlugin::runGraphCuts()
 
     output_data1d = new uchar[cubeSize];
     //memcpy(output_data1d,pOriginalImage->getRawData(),cubeSize);
-    memset(output_data1d,0,cubeSize);
+    memcpy(output_data1d,binData.data(),cubeSize);
+    //memset(output_data1d,0,cubeSize);
     printf("Applying cut\n");
+    g.getOutput(&originalCube,output_data1d);
     g.applyCut(&originalCube,output_data1d);
 
     printf("Exporting cube to output_data1d\n");

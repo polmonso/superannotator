@@ -32,6 +32,7 @@ void GraphCut::applyCut(Cube* inputCube, unsigned char* output_data)
     ulong wh = ni*nj;
     ulong n = wh*nk;
 
+    /*
     ulong nSources = 0;
     ulong nSinks = 0;
     for(int cubeIdx=0; cubeIdx<n; cubeIdx++) {
@@ -42,146 +43,76 @@ void GraphCut::applyCut(Cube* inputCube, unsigned char* output_data)
     }
 
   printf("nSources=%ld, nSinks=%ld\n", nSources,nSinks);
+*/
 
   int nodeType;
-  int nNodes;
-  if(nSources < nSinks)
-    {
-      nNodes = nSources;
-      nodeType = GraphType::SOURCE;
-    }
-  else
-    {
-      nNodes = nSinks;
-      nodeType = GraphType::SINK;
-    }
 
-  vector<Point> lNodes(nNodes);
-
-#if 1
   ulong inputCube_sliceSize = inputCube->width*inputCube->height;
-  ulong cubeSize = inputCube_sliceSize*inputCube->depth;
+  //ulong cubeSize = inputCube_sliceSize*inputCube->depth;
   ulong outputCubeIdx;
   ulong cubeIdx = 0;
-  for(int k=0;k<nk;k++)
-    for(int j = 0;j<nj;j++)
-      for(int i = 0;i<ni;i++,cubeIdx++)
+  const int nh_size = 1;
+  ulong sx,sy,sz,ex,ey,ez;
+  for(int z = 0;z < nk; z++)
+    for(int y = 0;y < nj; y++)
+      for(int x = 0;x < ni;x++)
         {
-          outputCubeIdx = ((k+subZ)*inputCube_sliceSize) + ((j+subY)*inputCube->width) + (i+subX);
+          outputCubeIdx = ((z+subZ)*inputCube_sliceSize) + ((y+subY)*inputCube->width) + (x+subX);
           //output_data[outputCubeIdx] = inputCube->at(i+subX,j+subY,k+subZ);
 
-          assert(outputCubeIdx < cubeSize);
-          if(inputCube->at(i+subX,j+subY,k+subZ) != 0) {
-          //if(inputCube->data[outputCubeIdx] != 0) {
-            if(m_graph->what_segment(m_node_ids[cubeIdx]) == nodeType) {
-                output_data[outputCubeIdx] = 128;
-            } else {
-                output_data[outputCubeIdx] = 255;
-            }
-          }
+          cubeIdx = (z*wh) + (y*ni) + x;
+          nodeType = m_graph->what_segment(m_node_ids[cubeIdx]);
 
-          /*
-          if(inputCube->data[outputCubeIdx] != 0) {
-          //if(inputCube->at(i+subX,j+subY,k+subZ) != 0) {
-              if(m_graph->what_segment(m_node_ids[cubeIdx]) == nodeType)
+          sx = max(0,x-nh_size);
+          ex = min(x+nh_size,ni-1);
+          sy = max(0,y-nh_size);
+          ey = min(y+nh_size,nj-1);
+          sz = max(0,z-nh_size);
+          ez = min(z+nh_size,nk-1);
+          for(int _x = sx; _x <= ex; _x++)
+            for(int _y = sy; _y <= ey; _y++)
+              for(int _z = sz; _z <= ez; _z++)
                 {
-
-                  //Point p;
-                  //p.x = i;
-                  //p.y = j;
-                  //p.z = k;
-                  //lNodes.push_back(p);
-
-                  outputCubeIdx = ((k+subZ)*inputCube_sliceSize) + ((j+subY)*inputCube->width) + (i+subX);
-                  //printf("Cutting (%d,%d,%d)\n",_x+subX,_y+subY,_z+subZ);
-                  output_data[outputCubeIdx] = 255;
-                } else {
-                  outputCubeIdx = ((k+subZ)*inputCube_sliceSize) + ((j+subY)*inputCube->width) + (i+subX);
-                  //printf("Cutting (%d,%d,%d)\n",_x+subX,_y+subY,_z+subZ);
-                  output_data[outputCubeIdx] = 128;
+                  if(inputCube->at(_x+subX,_y+subY,_z+subZ) != 0) {
+                      cubeIdx = (_z*wh) + (_y*ni) + _x;
+                      if(m_graph->what_segment(m_node_ids[cubeIdx]) != nodeType)
+                        {
+                          outputCubeIdx = ((_z+subZ)*inputCube_sliceSize) + ((_y+subY)*inputCube->width) + (_x+subX);
+                          //printf("Cutting (%d,%d,%d)\n",_x+subX,_y+subY,_z+subZ);
+                          output_data[outputCubeIdx] = 0;
+                        }
+                   }
                 }
-          }
-          */
-        }
-#else
-  ulong cubeIdx = 0;
-  for(int k=0;k<nk;k++)
-    for(int j = 0;j<nj;j++)
-      for(int i = 0;i<ni;i++,cubeIdx++)
-        {
-          //if(m_graph->what_segment(m_node_ids[cubeIdx]) == nodeType) {
-            Point p;
-            p.x = i;
-            p.y = j;
-            p.z = k;
-            lNodes.push_back(p);
-          //}
-        }
-#endif
 
-  printf("List of nodes generated. Contains %ld nodes\n",lNodes.size());
-
-#if 0
-  const int nh_size = 1;
-  int x,y,z;
-  int sx,sy,sz;
-  int ex,ey,ez;
-  ulong inputCube_sliceSize = inputCube->width*inputCube->height;
-  ulong outputCubeIdx;
-  for(vector<Point>::iterator itNode = lNodes.begin();
-      itNode != lNodes.end(); itNode++)
-    {
-      //z = cubeIdx/wh;
-      //y = (cubeIdx-(z*cubeIdx))/wh;      
-      x = itNode->x;
-      y = itNode->y;
-      z = itNode->z;
-      //printf("(%d,%d,%d)\n",x,y,z);
-      sx = max(0,x-nh_size);
-      ex = min(x+nh_size,ni-1);
-      sy = max(0,y-nh_size);
-      ey = min(y+nh_size,nj-1);
-      sz = max(0,z-nh_size);
-      ez = min(z+nh_size,nk-1);
-      for(int _x = sx; _x <= ex; _x++) 
-        for(int _y = sy; _y <= ey; _y++)
-          for(int _z = sz; _z <= ez; _z++)
-            {
-              if(inputCube->at(_x+subX,_y+subY,_z+subZ) != 0) {
-                  cubeIdx = (_z*wh) + (_y*ni) + _x;
-                  if(m_graph->what_segment(m_node_ids[cubeIdx]) != nodeType)
-                    {
-                      outputCubeIdx = ((_z+subZ)*inputCube_sliceSize) + ((_y+subY)*inputCube->width) + (_x+subX);
-                      //printf("Cutting (%d,%d,%d)\n",_x+subX,_y+subY,_z+subZ);
-                      output_data[outputCubeIdx] = 255;
-                    } else {
-                      outputCubeIdx = ((_z+subZ)*inputCube_sliceSize) + ((_y+subY)*inputCube->width) + (_x+subX);
-                      //printf("Cutting (%d,%d,%d)\n",_x+subX,_y+subY,_z+subZ);
-                      output_data[outputCubeIdx] = 128;
-                  }
-              }
-            }
-    }
-#endif
+        }
 }
 
 // caller is responsible for freeing memory
 void GraphCut::getOutput(Cube* inputCube, uchar*& output_data)
 {
-  printf("GraphCut::getOutput Allocating %ldx%ldx%ld=%ld B\n",ni,nj,nk,ni*nj*nk);
-  output_data = new uchar[ni*nj*nk];
-  ulong wh = ni*nj;
+  if(output_data == 0) {
+    return;
+  }
+
+  ulong inputCube_sliceSize = inputCube->width*inputCube->height;
+  ulong cubeSize = inputCube_sliceSize*inputCube->depth;
   ulong cubeIdx = 0;
   for(int k=0;k<nk;k++)
     for(int j = 0;j<nj;j++)
       for(int i = 0;i<ni;i++,cubeIdx++)
-        {
-          if(m_graph->what_segment(m_node_ids[cubeIdx]) == GraphType::SOURCE)
-            {
-              output_data[k*wh+j*ni+i] = inputCube->at(i+subX,j+subY,k+subZ);
+        {          
+          ulong outputCubeIdx = ((k+subZ)*inputCube_sliceSize) + ((j+subY)*inputCube->width) + (i+subX);
+          //output_data[outputCubeIdx] = inputCube->at(i+subX,j+subY,k+subZ);
+
+          assert(outputCubeIdx < cubeSize);
+          if(inputCube->at(i+subX,j+subY,k+subZ) != 0) {
+          //if(inputCube->data[outputCubeIdx] != 0) {
+            if(m_graph->what_segment(m_node_ids[cubeIdx]) == GraphType::SOURCE) {
+                output_data[outputCubeIdx] = 128;
+            } else {
+                output_data[outputCubeIdx] = 255;
             }
-          else
-            output_data[k*wh+j*ni+i] = 128; //255
+          }
         }
 }
 
@@ -283,7 +214,15 @@ void GraphCut::run_maxflow(Cube* cube,
       binId = (int)cube->at(itPoint->x, itPoint->y, itPoint->z)/nbItemsPerBin - 1;
       if(binId < 0)
           binId = 0;
-      if(binId >= histoSize)
+      if(binId >= histoSize)          assert(outputCubeIdx < cubeSize);
+      if(inputCube->at(i+subX,j+subY,k+subZ) != 0) {
+      //if(inputCube->data[outputCubeIdx] != 0) {
+        if(m_graph->what_segment(m_node_ids[cubeIdx]) == nodeType) {
+            output_data[outputCubeIdx] = 128;
+        } else {
+            output_data[outputCubeIdx] = 255;
+        }
+      }
           binId = histoSize - 1;
       histoSink[binId]++;
     }
@@ -334,7 +273,7 @@ void GraphCut::run_maxflow(Cube* cube,
                   dist = (seedX-i)*(seedX-i) + (seedY-j)*(seedY-j) + (seedZ-k)*(seedZ-k);
                   if(dist <= minDist)
                     {
-                      printf("[GraphCuts] Source found %d %d %d\n", i, j, k);
+                      //printf("[GraphCuts] Source found %d %d %d\n", i, j, k);
                       weightToSource = K;
                       break;
                     }
@@ -349,7 +288,7 @@ void GraphCut::run_maxflow(Cube* cube,
                   dist = (seedX-i)*(seedX-i) + (seedY-j)*(seedY-j) + (seedZ-k)*(seedZ-k);
                   if(dist <= minDist)
                     {
-                      printf("[GraphCuts] Sink found %d %d %d\n", i, j, k);
+                      //printf("[GraphCuts] Sink found %d %d %d\n", i, j, k);
                       weightToSink = K;
                       break;
                     }
