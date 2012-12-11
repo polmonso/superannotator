@@ -2,6 +2,7 @@
 #include "graphCut.h"
 #include "gaussianFilter.cxx"
 
+#include <QInputDialog>
 #include <vector>
 #include "utils.h"
 
@@ -26,6 +27,14 @@ PluginBase *createPlugin()
 
 void GraphCutsPlugin::runGraphCuts()
 {
+    // ask for gaussian variance
+    bool ok = false;
+    float gaussianVariance = QInputDialog::getDouble(0, "Gaussian variance", "Specify the variance for the gaussian filter", 1.6, 0.6, 40.0f, 1, &ok);
+    if (!ok) return;
+
+    const float sigma = 100;
+    const int seedRadius = 3;
+
     // generate list of seeds
     Matrix3D<ScoreType> &scoreMatrix = mPluginServices->getOverlayVolumeData(0);
     std::vector<Point> sinkPoints;
@@ -58,14 +67,11 @@ void GraphCutsPlugin::runGraphCuts()
         return;
     }
 
-    float sigma = 100;
-    int seedRadius = 3;
-
     Matrix3D<PixelType>& volData = mPluginServices->getVolumeVoxelData();
     ulong cubeSize = volData.numElem();
 
     // get weight image
-    float gaussianVariance = 1.0;
+    //float gaussianVariance = 1.0;
     float* foutputWeightImage = 0;
     gradientMagnitude<unsigned char, float>(volData.data(), volData.width(), volData.height(), volData.depth(), 1, gaussianVariance, foutputWeightImage);
 
@@ -79,24 +85,21 @@ void GraphCutsPlugin::runGraphCuts()
 
     exportTIFCube(binData.data(),"temp_binCube",volData.depth(),volData.height(),volData.width());
 
-    const int idx_new_overlay = 2;
-    Matrix3D<OverlayType> &ovMatrix = mPluginServices->getOverlayVolumeData(idx_new_overlay);
+    const int idx_weight_overlay = 2;
+    Matrix3D<OverlayType> &weightMatrix = mPluginServices->getOverlayVolumeData(idx_weight_overlay);
 
     // MUST BE RESIZED!
-    ovMatrix.reallocSizeLike(volData);
+    weightMatrix.reallocSizeLike(volData);
 
-    /*
-    LabelType *dPtr = ovMatrix.data();
-    ulong cubeSize = ovMatrix.numElem();
+    LabelType *dPtr = weightMatrix.data();
     for(ulong i = 0; i < cubeSize; i++) {
         dPtr[i] = outputWeightImage[i];
     }
 
     // set enabled
-    mPluginServices->setOverlayVisible( idx_new_overlay, true );
-
+    mPluginServices->setOverlayVisible( idx_weight_overlay, true );
     mPluginServices->updateDisplay();
-    */
+
 
     Cube cGCWeight;
     cGCWeight.width = volData.width();
@@ -118,28 +121,10 @@ void GraphCutsPlugin::runGraphCuts()
     originalCube.width = volData.width();
     originalCube.height = volData.height();
     originalCube.depth = volData.depth();
-    //originalCube.data = volData.data();
     originalCube.data = binData.data();
     originalCube.wh = originalCube.width*originalCube.height;
 
-#if 0
-    g.getOutput(&originalCube,output_data1d);
 
-    ulong subCubeWidth;
-    ulong subCubeHeight;
-    ulong subCubeDepth;
-    g.getCubeSize(subCubeWidth,
-                subCubeHeight,
-                subCubeDepth);
-
-
-
-  pOutput4DImage.setData(output_data1d, subCubeWidth,subCubeHeight,subCubeDepth,
-                         1, //p4DImage.getCDim(),
-                         imageType);
-
-#else
-    //ulong cubeSize = volData.numElem();
     output_data1d = new uchar[cubeSize];
     //memcpy(output_data1d,pOriginalImage->getRawData(),cubeSize);
     memset(output_data1d,0,cubeSize);
@@ -149,9 +134,12 @@ void GraphCutsPlugin::runGraphCuts()
     printf("Exporting cube to output_data1d\n");
     exportTIFCube(output_data1d,"output_data1d",volData.depth(),volData.height(),volData.width());
 
-#endif
-
-    LabelType *dPtr = ovMatrix.data();
+    // copy output to a new overlay
+    const int idx_new_overlay = 3;
+    Matrix3D<OverlayType> &ovMatrix = mPluginServices->getOverlayVolumeData(idx_new_overlay);
+    ovMatrix.reallocSizeLike(volData);
+    //LabelType *dPtr = ovMatrix.data();
+    dPtr = ovMatrix.data();
     for(ulong i = 0; i < cubeSize; i++) {
         dPtr[i] = output_data1d[i];
     }
