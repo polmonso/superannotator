@@ -67,6 +67,8 @@ struct OverlayColorList : public ColorListBase
         addColor( QColor(0xFF, 0xC2, 0x0B) );
         addColor( QColor(0xFF, 0x0B, 0xFF) );
         addColor( QColor(0xFF, 0xFF, 0x00) );
+        addColor( QColor(0x0B, 0xFF, 0xC2) );
+        addColor( QColor(0xC2, 0xFF, 0xFF) );
     }
 };
 
