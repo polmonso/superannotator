@@ -170,3 +170,17 @@ void GraphCutsPlugin::runGraphCuts()
     delete[] outputWeightImage;
     printf("Done\n");
 }
+
+void GraphCutsPlugin::cleanSeedOverlay()
+{
+    Matrix3D<ScoreType> &scoreMatrix = mPluginServices->getOverlayVolumeData(0);
+
+    if (scoreMatrix.isEmpty())
+    {
+        scoreMatrix.reallocSizeLike( mPluginServices->getVolumeVoxelData() );
+    }
+
+    scoreMatrix.fill(0);
+    mPluginServices->setOverlayVisible( 0, true );
+    mPluginServices->updateDisplay();
+}

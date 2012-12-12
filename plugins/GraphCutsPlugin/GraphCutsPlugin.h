@@ -33,8 +33,16 @@ public:
         }
 
         /** Add a menu item **/
+        {
         QAction *action = mPluginServices->getPluginMenu()->addAction( "Show message box" );
         connect( action, SIGNAL(triggered()), this, SLOT(showMsgBoxClicked()) );
+        }
+
+        /** Add a menu item **/
+        {
+        QAction *action = mPluginServices->getPluginMenu()->addAction( "Clean seed overlay" );
+        connect( action, SIGNAL(triggered()), this, SLOT(cleanSeedOverlay()) );
+        }
 
         return true;
     }
@@ -84,6 +92,8 @@ public:
     }
 
 public slots:
+
+    void cleanSeedOverlay();
 
     void runGraphCuts();
 
