@@ -30,6 +30,7 @@ private:
         QString savePath;
         QString loadPath;   // these are for annotation
 
+        QString savePathScores; // for score volume
         QString loadPathScores; // for score volume
         QString loadPathVolume; // for main volume
         QString fijiExePath;
@@ -52,7 +53,6 @@ protected:
 private:
     Ui::AnnotatorWnd *ui;
     int mCurZSlice;
-
     // if label file shoul be saved on exit, and which would be the path
     bool        mSaveLabelsOnExit;
     QString     mSaveLabelsOnExitPath;
@@ -175,6 +175,8 @@ public slots:
     // called when an image wants to be loaded in an overlay layer
     void overlayLoadTriggered();
     void overlayChooseColorTriggered();
+
+    void overlaySaveTriggered();
 };
 
 #endif // ANNOTATORWND_H

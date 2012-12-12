@@ -277,6 +277,14 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
             load->setData( i ); // use data as index
 
             connect( load, SIGNAL(triggered()), this, SLOT(overlayLoadTriggered()) );
+
+            // and a save button too
+            QAction *save = subMenu->addAction("Save to file...");
+            save->setCheckable(false);
+            save->setEnabled(true);
+            save->setData( i ); // use data as index
+
+            connect( save, SIGNAL(triggered()), this, SLOT(overlaySaveTriggered()) );
         }
     }
 
@@ -353,6 +361,34 @@ void AnnotatorWnd::overlayLoadTriggered()
     statusBarMsg("Overlay image loaded successfully.");
 
     mSettingsData.loadPathScores = QFileInfo(fileName).absolutePath();
+    this->saveSettings();
+}
+
+void AnnotatorWnd::overlaySaveTriggered()
+{
+    QAction *action = qobject_cast<QAction *>(sender());
+    int idx = action->data().toInt();
+
+    QString fileName = QFileDialog::getOpenFileName( this, "Save overlay image", mSettingsData.savePathScores, mFileTypeFilter );
+
+    if (fileName.isEmpty())
+        return;
+
+    if (!fileName.endsWith(".tif"))
+        fileName += ".tif";
+
+    qDebug() << fileName;
+
+    std::string stdFName = fileName.toLocal8Bit().constData();
+
+    if (!mOverlayVolumeList[idx]->save( stdFName )) {
+        statusBarMsg(QString("Error saving ") + fileName, 0 );
+        return;
+    }
+    else
+        statusBarMsg("Annotation saved successfully.");
+
+    mSettingsData.savePathScores = QFileInfo(fileName).absolutePath();
     this->saveSettings();
 }
 
