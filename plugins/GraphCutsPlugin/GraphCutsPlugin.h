@@ -12,6 +12,9 @@
 
 using namespace std;
 
+const int idx_bindata_overlay = 1;
+const int idx_output_overlay = 3;
+
 class GraphCutsPlugin : public PluginBase
 {
     Q_OBJECT
@@ -26,22 +29,30 @@ public:
         mPluginServices = &pServices;
 
         /** Add a menu item **/
-        for (unsigned int i=0; i < mPluginServices->getMaxOverlayVolumes(); i++) {
-            QAction *action = mPluginServices->getPluginMenu()->addAction( QString("Run %1").arg(i+1) );
-            action->setData( i );
-            connect( action, SIGNAL(triggered()), this, SLOT(runGraphCuts()) );
-        }
-
-        /** Add a menu item **/
+        //for (unsigned int i=0; i < mPluginServices->getMaxOverlayVolumes(); i++) {
         {
-        QAction *action = mPluginServices->getPluginMenu()->addAction( "Show message box" );
-        connect( action, SIGNAL(triggered()), this, SLOT(showMsgBoxClicked()) );
+            unsigned int i = 0;
+            QAction *action = mPluginServices->getPluginMenu()->addAction( QString("Run %1").arg(i+1) );
+            action->setData(i);
+            connect( action, SIGNAL(triggered()), this, SLOT(runGraphCuts()) );
         }
 
         /** Add a menu item **/
         {
         QAction *action = mPluginServices->getPluginMenu()->addAction( "Clean seed overlay" );
         connect( action, SIGNAL(triggered()), this, SLOT(cleanSeedOverlay()) );
+        }
+
+        /** Add a menu item **/
+        {
+        QAction *action = mPluginServices->getPluginMenu()->addAction( "Transfer overlay" );
+        connect( action, SIGNAL(triggered()), this, SLOT(transferOverlay()) );
+        }
+
+        /** Add a menu item **/
+        {
+        QAction *action = mPluginServices->getPluginMenu()->addAction( "Show message box" );
+        connect( action, SIGNAL(triggered()), this, SLOT(showMsgBoxClicked()) );
         }
 
         return true;
@@ -96,6 +107,9 @@ public slots:
     void cleanSeedOverlay();
 
     void runGraphCuts();
+
+    // transfer overlay created by plugin to input overlay
+    void transferOverlay();
 
     void showMsgBoxClicked()
     {

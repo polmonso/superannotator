@@ -36,21 +36,21 @@ void GraphCutsPlugin::runGraphCuts()
     const int seedRadius = 3;
 
     // generate list of seeds
-    Matrix3D<ScoreType> &scoreMatrix = mPluginServices->getOverlayVolumeData(0);
+    Matrix3D<ScoreType> &seedOverlay = mPluginServices->getOverlayVolumeData(0);
     std::vector<Point> sinkPoints;
     std::vector<Point> sourcePoints;
 
-    for(int x = 0; x < scoreMatrix.width(); ++x) {
-        for(int y = 0; y < scoreMatrix.height(); ++y) {
-            for(int z = 0; z < scoreMatrix.depth(); ++z) {
+    for(int x = 0; x < seedOverlay.width(); ++x) {
+        for(int y = 0; y < seedOverlay.height(); ++y) {
+            for(int z = 0; z < seedOverlay.depth(); ++z) {
                 Point p;
                 p.x = x;
                 p.y = y;
                 p.z = z;
-                if(scoreMatrix(x,y,z) == 255) {
+                if(seedOverlay(x,y,z) == 255) {
                     sourcePoints.push_back(p);
                 } else {
-                    if(scoreMatrix(x,y,z) == 128) {
+                    if(seedOverlay(x,y,z) == 128) {
                        sinkPoints.push_back(p);
                     }
                 }
@@ -80,8 +80,7 @@ void GraphCutsPlugin::runGraphCuts()
     exportTIFCube(outputWeightImage,"outputWeightImage",volData.depth(),volData.height(),volData.width());
     delete[] foutputWeightImage;
 
-    const int idx_binary_cube = 1;
-    Matrix3D<OverlayType> &binData = mPluginServices->getOverlayVolumeData(idx_binary_cube);
+    Matrix3D<OverlayType> &binData = mPluginServices->getOverlayVolumeData(idx_bindata_overlay);
 
     exportTIFCube(binData.data(),"temp_binCube",volData.depth(),volData.height(),volData.width());
 
@@ -151,9 +150,8 @@ void GraphCutsPlugin::runGraphCuts()
     printf("Exporting cube to output_data1d\n");
     exportTIFCube(output_data1d,"output_data1d",volData.depth(),volData.height(),volData.width());
 
-    // copy output to a new overlay
-    const int idx_new_overlay = 3;
-    Matrix3D<OverlayType> &ovMatrix = mPluginServices->getOverlayVolumeData(idx_new_overlay);
+    // copy output to a new overlay    
+    Matrix3D<OverlayType> &ovMatrix = mPluginServices->getOverlayVolumeData(idx_output_overlay);
     ovMatrix.reallocSizeLike(volData);
     //LabelType *dPtr = ovMatrix.data();
     dPtr = ovMatrix.data();
@@ -162,7 +160,7 @@ void GraphCutsPlugin::runGraphCuts()
     }
 
     // set enabled
-    mPluginServices->setOverlayVisible( idx_new_overlay, true );
+    mPluginServices->setOverlayVisible( idx_output_overlay, true );
     mPluginServices->updateDisplay();
 
     printf("Cleaning\n");
@@ -173,14 +171,27 @@ void GraphCutsPlugin::runGraphCuts()
 
 void GraphCutsPlugin::cleanSeedOverlay()
 {
-    Matrix3D<ScoreType> &scoreMatrix = mPluginServices->getOverlayVolumeData(0);
+    Matrix3D<ScoreType> &seedOverlay = mPluginServices->getOverlayVolumeData(0);
 
-    if (scoreMatrix.isEmpty())
+    if (seedOverlay.isEmpty())
     {
-        scoreMatrix.reallocSizeLike( mPluginServices->getVolumeVoxelData() );
+        seedOverlay.reallocSizeLike( mPluginServices->getVolumeVoxelData() );
     }
 
-    scoreMatrix.fill(0);
+    seedOverlay.fill(0);
     mPluginServices->setOverlayVisible( 0, true );
     mPluginServices->updateDisplay();
+}
+
+void GraphCutsPlugin::transferOverlay()
+{
+    Matrix3D<ScoreType> &outputOverlay = mPluginServices->getOverlayVolumeData(idx_output_overlay);
+
+    if (!outputOverlay.isEmpty())
+    {
+        Matrix3D<ScoreType> &inputOverlay = mPluginServices->getOverlayVolumeData(idx_bindata_overlay);
+        inputOverlay.copyFrom(outputOverlay);
+        mPluginServices->setOverlayVisible(idx_bindata_overlay, true );
+        mPluginServices->updateDisplay();
+    }
 }
