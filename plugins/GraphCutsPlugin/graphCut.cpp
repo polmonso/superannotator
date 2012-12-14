@@ -23,12 +23,8 @@ GraphCut::~GraphCut() {
     delete subCube;
 }
 
-void GraphCut::applyCut(Cube* inputCube, unsigned char* output_data)
+void GraphCut::applyCut(LabelImageType* ptrLabelInput, Cube* inputCube, unsigned char* output_data, int ccId)
 {
-    if(output_data == 0) {
-        return;
-    }
-
     ulong wh = ni*nj;
     ulong n = wh*nk;
 
@@ -53,6 +49,7 @@ void GraphCut::applyCut(Cube* inputCube, unsigned char* output_data)
   ulong cubeIdx = 0;
   const int nh_size = 1;
   ulong sx,sy,sz,ex,ey,ez;
+  LabelImageType::IndexType index;
   for(int z = 0;z < nk; z++)
     for(int y = 0;y < nj; y++)
       for(int x = 0;x < ni;x++)
@@ -73,7 +70,11 @@ void GraphCut::applyCut(Cube* inputCube, unsigned char* output_data)
             for(int _y = sy; _y <= ey; _y++)
               for(int _z = sz; _z <= ez; _z++)
                 {
-                  if(inputCube->at(_x+subX,_y+subY,_z+subZ) != 0) {
+                  //if(inputCube->at(_x+subX,_y+subY,_z+subZ) != 0) {
+                  index[0] = _x + subX;
+                  index[1] = _y + subY;
+                  index[2] = _z + subZ;
+                  if(ptrLabelInput->GetPixel(index) == ccId) {
                       cubeIdx = (_z*wh) + (_y*ni) + _x;
                       if(m_graph->what_segment(m_node_ids[cubeIdx]) != nodeType)
                         {

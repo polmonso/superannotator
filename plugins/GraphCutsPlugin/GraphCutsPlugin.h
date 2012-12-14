@@ -76,7 +76,7 @@ public:
             scoreMatrix.fill(0);
         }
 
-        if (evt->modifiers() & Qt::RightButton) {
+        if (evt->buttons() & Qt::RightButton) {
             for(int x = max(0, (int)imgX - 1); x <= min(scoreMatrix.width()-1, imgX + 1); ++x) {
                 for(int y = max(0, (int)imgY - 1); y <= min(scoreMatrix.height()-1, imgY + 1); ++y) {
                     for(int z = max(0, (int)imgZ - 1); z <= min(scoreMatrix.depth()-1, imgZ + 1); ++z) {

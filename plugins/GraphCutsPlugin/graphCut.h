@@ -41,7 +41,7 @@ struct Point
 {
     int x;
     int y;
-    int z;
+    int z;    
 };
 
 struct Cube
@@ -89,7 +89,7 @@ class GraphCut
   GraphCut();
   ~GraphCut();
 
-  void applyCut(Cube* inputCube, unsigned char* output_data);
+  void applyCut(LabelImageType* ptrLabelInput, Cube* inputCube, unsigned char* output_data, int ccId);
 
   unsigned long at(int i, int j, int k);
 

@@ -59,46 +59,46 @@ void GraphCutsPlugin::runGraphCuts()
     }
 
     if(sourcePoints.size() == 0) {
-        printf("[Main] Error: 0 source points\n");
+        printf("Error: 0 source points\n");
         return;
     }
     if(sinkPoints.size() == 0) {
-        printf("[Main] Error: 0 sink points\n");
+        printf("Error: 0 sink points\n");
         return;
     }
 
     Matrix3D<PixelType>& volData = mPluginServices->getVolumeVoxelData();
     ulong cubeSize = volData.numElem();
 
-    // get weight image
-    //float gaussianVariance = 1.0;
-    float* foutputWeightImage = 0;
-    gradientMagnitude<unsigned char, float>(volData.data(), volData.width(), volData.height(), volData.depth(), 1, gaussianVariance, foutputWeightImage);
-
-    uchar* outputWeightImage = 0;
-    cubeFloat2Uchar(foutputWeightImage,outputWeightImage,volData.width(), volData.height(), volData.depth());
-    exportTIFCube(outputWeightImage,"outputWeightImage",volData.depth(),volData.height(),volData.width());
-    delete[] foutputWeightImage;
-
     Matrix3D<OverlayType> &binData = mPluginServices->getOverlayVolumeData(idx_bindata_overlay);
-
-    exportTIFCube(binData.data(),"temp_binCube",volData.depth(),volData.height(),volData.width());
-
-    // copy weight image to overlay
-    const int idx_weight_overlay = 2;
-    Matrix3D<OverlayType> &weightMatrix = mPluginServices->getOverlayVolumeData(idx_weight_overlay);
-    weightMatrix.reallocSizeLike(volData);
-    LabelType *dPtr = weightMatrix.data();
-    for(ulong i = 0; i < cubeSize; i++) {
-        dPtr[i] = outputWeightImage[i];
-    }
-
-    // set enabled
-    mPluginServices->setOverlayVisible( idx_weight_overlay, true );
-    //mPluginServices->updateDisplay();
+    //exportTIFCube(binData.data(),"temp_binCube",volData.depth(),volData.height(),volData.width());
 
     //LabelImageType::Pointer labelInput = getLabelImage<TInputPixelType,LabelImageType>(inputData,nx,ny,nz);
     LabelImageType::Pointer labelInput = getLabelImage<uchar,LabelImageType>(binData.data(),binData.width(),binData.height(),binData.depth());
+
+    // check that seed points belong to the same connected component
+    std::vector<Point>::iterator it = sinkPoints.begin();
+    LabelImageType* ptrLabelInput = labelInput.GetPointer();
+    LabelImageType::IndexType index;
+    index[0] = it->x; index[1] = it->y; index[2] = it->z;
+    int ccId = ptrLabelInput->GetPixel(index);
+    for(; it != sinkPoints.end(); ++it) {
+        index[0] = it->x; index[1] = it->y; index[2] = it->z;
+        int _ccId = ptrLabelInput->GetPixel(index);
+        if(ccId != _ccId) {
+            printf("Error: seed points belong to different connected components.\n");
+            return;
+        }
+    }
+    for(it = sourcePoints.begin(); it != sourcePoints.end(); ++it) {
+        index[0] = it->x; index[1] = it->y; index[2] = it->z;
+        int _ccId = ptrLabelInput->GetPixel(index);
+        if(ccId != _ccId) {
+            printf("Error: seed points belong to different connected components.\n");
+            return;
+        }
+    }
+    printf("ccId = %d\n", ccId);
 
     /*
     LabelImageType* pLabelInput = labelInput.GetPointer();
@@ -113,6 +113,29 @@ void GraphCutsPlugin::runGraphCuts()
     }
     mPluginServices->setOverlayVisible( idx_label_overlay, true );
     */
+
+    // get weight image
+    //float gaussianVariance = 1.0;
+    float* foutputWeightImage = 0;
+    gradientMagnitude<unsigned char, float>(volData.data(), volData.width(), volData.height(), volData.depth(), 1, gaussianVariance, foutputWeightImage);
+
+    uchar* outputWeightImage = 0;
+    cubeFloat2Uchar(foutputWeightImage,outputWeightImage,volData.width(), volData.height(), volData.depth());
+    exportTIFCube(outputWeightImage,"outputWeightImage",volData.depth(),volData.height(),volData.width());
+    delete[] foutputWeightImage;
+
+    // copy weight image to overlay
+    const int idx_weight_overlay = 2;
+    Matrix3D<OverlayType> &weightMatrix = mPluginServices->getOverlayVolumeData(idx_weight_overlay);
+    weightMatrix.reallocSizeLike(volData);
+    LabelType *dPtr = weightMatrix.data();
+    for(ulong i = 0; i < cubeSize; i++) {
+        dPtr[i] = outputWeightImage[i];
+    }
+
+    // set enabled
+    mPluginServices->setOverlayVisible( idx_weight_overlay, true );
+    //mPluginServices->updateDisplay();
 
     Cube cGCWeight;
     cGCWeight.width = volData.width();
@@ -138,14 +161,13 @@ void GraphCutsPlugin::runGraphCuts()
     originalCube.data = binData.data();
     originalCube.wh = originalCube.width*originalCube.height;
 
-
     output_data1d = new uchar[cubeSize];
     //memcpy(output_data1d,pOriginalImage->getRawData(),cubeSize);
     memcpy(output_data1d,binData.data(),cubeSize);
     //memset(output_data1d,0,cubeSize);
     printf("Applying cut\n");
-    g.getOutput(&originalCube,output_data1d);
-    g.applyCut(&originalCube,output_data1d);
+    g.getOutput(&originalCube, output_data1d);
+    g.applyCut(ptrLabelInput, &originalCube, output_data1d, ccId);
 
     printf("Exporting cube to output_data1d\n");
     exportTIFCube(output_data1d,"output_data1d",volData.depth(),volData.height(),volData.width());
@@ -190,7 +212,13 @@ void GraphCutsPlugin::transferOverlay()
     if (!outputOverlay.isEmpty())
     {
         Matrix3D<ScoreType> &inputOverlay = mPluginServices->getOverlayVolumeData(idx_bindata_overlay);
-        inputOverlay.copyFrom(outputOverlay);
+        //inputOverlay.copyFrom(outputOverlay);
+        LabelType *dPtrInput = inputOverlay.data();
+        LabelType *dPtrOutput = outputOverlay.data();
+        ulong cubeSize = outputOverlay.numElem();
+        for(ulong i = 0; i < cubeSize; i++) {
+            dPtrInput[i] = (dPtrOutput[i]==0)?0:255;
+        }
         mPluginServices->setOverlayVisible(idx_bindata_overlay, true );
         mPluginServices->updateDisplay();
     }
