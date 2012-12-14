@@ -65,7 +65,7 @@ public:
 
     virtual void  mouseMoveEvent( QMouseEvent *evt, unsigned int imgX, unsigned int imgY, unsigned int imgZ )
     {
-        if ( (evt->buttons() & Qt::LeftButton) == 0)
+        if ( (evt->buttons() & Qt::LeftButton) == 0 && (evt->buttons() & Qt::RightButton) == 0)
            return;
 
         Matrix3D<ScoreType> &scoreMatrix = mPluginServices->getOverlayVolumeData(0);
@@ -76,26 +76,37 @@ public:
             scoreMatrix.fill(0);
         }
 
-        if (evt->modifiers() & Qt::ShiftModifier) {
+        if (evt->modifiers() & Qt::RightButton) {
             for(int x = max(0, (int)imgX - 1); x <= min(scoreMatrix.width()-1, imgX + 1); ++x) {
                 for(int y = max(0, (int)imgY - 1); y <= min(scoreMatrix.height()-1, imgY + 1); ++y) {
                     for(int z = max(0, (int)imgZ - 1); z <= min(scoreMatrix.depth()-1, imgZ + 1); ++z) {
-                        scoreMatrix(x,y,z) = 128;
+                        scoreMatrix(x,y,z) = 0;
                     }
                 }
             }
-           // scoreMatrix( imgX, imgY, imgZ ) = 128;
-        }
-        else {
-            for(int x = max(0, (int)imgX - 1); x <= min(scoreMatrix.width()-1, imgX + 1); ++x) {
-                for(int y = max(0, (int)imgY - 1); y <= min(scoreMatrix.height()-1, imgY + 1); ++y) {
-                    for(int z = max(0, (int)imgZ - 1); z <= min(scoreMatrix.depth()-1, imgZ + 1); ++z) {
-                        scoreMatrix(x,y,z) = 255;
+           // scoreMatrix( imgX, imgY, imgZ ) = 0;
+        } else {
+            if (evt->modifiers() & Qt::ShiftModifier) {
+                for(int x = max(0, (int)imgX - 1); x <= min(scoreMatrix.width()-1, imgX + 1); ++x) {
+                    for(int y = max(0, (int)imgY - 1); y <= min(scoreMatrix.height()-1, imgY + 1); ++y) {
+                        for(int z = max(0, (int)imgZ - 1); z <= min(scoreMatrix.depth()-1, imgZ + 1); ++z) {
+                            scoreMatrix(x,y,z) = 128;
+                        }
                     }
                 }
+               // scoreMatrix( imgX, imgY, imgZ ) = 128;
             }
+            else {
+                for(int x = max(0, (int)imgX - 1); x <= min(scoreMatrix.width()-1, imgX + 1); ++x) {
+                    for(int y = max(0, (int)imgY - 1); y <= min(scoreMatrix.height()-1, imgY + 1); ++y) {
+                        for(int z = max(0, (int)imgZ - 1); z <= min(scoreMatrix.depth()-1, imgZ + 1); ++z) {
+                            scoreMatrix(x,y,z) = 255;
+                        }
+                    }
+                }
 
-            //scoreMatrix( imgX, imgY, imgZ ) = 255;
+                //scoreMatrix( imgX, imgY, imgZ ) = 255;
+            }
         }
 
         mPluginServices->setOverlayVisible( 0, true );

@@ -29,7 +29,7 @@ void GraphCutsPlugin::runGraphCuts()
 {
     // ask for gaussian variance
     bool ok = false;
-    float gaussianVariance = QInputDialog::getDouble(0, "Gaussian variance", "Specify the variance for the gaussian filter", 1.6, 0.6, 40.0f, 1, &ok);
+    float gaussianVariance = QInputDialog::getDouble(0, "Gaussian variance", "Specify the variance for the gaussian filter", 2.0, 0.6, 40.0f, 1, &ok);
     if (!ok) return;
 
     const float sigma = 100;
