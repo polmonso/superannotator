@@ -27,6 +27,9 @@ PluginBase *createPlugin()
 
 void GraphCutsPlugin::runGraphCuts()
 {
+    QAction *action = qobject_cast<QAction *>(sender());
+    unsigned int idx = action->data().toUInt();
+
     // ask for gaussian variance
     bool ok = false;
     float gaussianVariance = QInputDialog::getDouble(0, "Gaussian variance", "Specify the variance for the gaussian filter", 2.0, 0.6, 40.0f, 1, &ok);
@@ -34,6 +37,8 @@ void GraphCutsPlugin::runGraphCuts()
 
     const float sigma = 100;
     const int seedRadius = 3;
+
+    GraphCut g;
 
     // generate list of seeds
     Matrix3D<ScoreType> &seedOverlay = mPluginServices->getOverlayVolumeData(0);
@@ -70,50 +75,6 @@ void GraphCutsPlugin::runGraphCuts()
     Matrix3D<PixelType>& volData = mPluginServices->getVolumeVoxelData();
     ulong cubeSize = volData.numElem();
 
-    Matrix3D<OverlayType> &binData = mPluginServices->getOverlayVolumeData(idx_bindata_overlay);
-    //exportTIFCube(binData.data(),"temp_binCube",volData.depth(),volData.height(),volData.width());
-
-    //LabelImageType::Pointer labelInput = getLabelImage<TInputPixelType,LabelImageType>(inputData,nx,ny,nz);
-    LabelImageType::Pointer labelInput = getLabelImage<uchar,LabelImageType>(binData.data(),binData.width(),binData.height(),binData.depth());
-
-    // check that seed points belong to the same connected component
-    std::vector<Point>::iterator it = sinkPoints.begin();
-    LabelImageType* ptrLabelInput = labelInput.GetPointer();
-    LabelImageType::IndexType index;
-    index[0] = it->x; index[1] = it->y; index[2] = it->z;
-    int ccId = ptrLabelInput->GetPixel(index);
-    for(; it != sinkPoints.end(); ++it) {
-        index[0] = it->x; index[1] = it->y; index[2] = it->z;
-        int _ccId = ptrLabelInput->GetPixel(index);
-        if(ccId != _ccId) {
-            printf("Error: seed points belong to different connected components.\n");
-            return;
-        }
-    }
-    for(it = sourcePoints.begin(); it != sourcePoints.end(); ++it) {
-        index[0] = it->x; index[1] = it->y; index[2] = it->z;
-        int _ccId = ptrLabelInput->GetPixel(index);
-        if(ccId != _ccId) {
-            printf("Error: seed points belong to different connected components.\n");
-            return;
-        }
-    }
-    printf("ccId = %d\n", ccId);
-
-    /*
-    LabelImageType* pLabelInput = labelInput.GetPointer();
-
-    // copy label image to overlay
-    const int idx_label_overlay = 4;
-    Matrix3D<OverlayType> &labelMatrix = mPluginServices->getOverlayVolumeData(idx_label_overlay);
-    labelMatrix.reallocSizeLike(volData);
-    dPtr = labelMatrix.data();
-    for(ulong i = 0; i < cubeSize; i++) {
-        dPtr[i] = pLabelInput[i];
-    }
-    mPluginServices->setOverlayVisible( idx_label_overlay, true );
-    */
-
     // get weight image
     //float gaussianVariance = 1.0;
     float* foutputWeightImage = 0;
@@ -133,55 +94,134 @@ void GraphCutsPlugin::runGraphCuts()
         dPtr[i] = outputWeightImage[i];
     }
 
-    // set enabled
-    mPluginServices->setOverlayVisible( idx_weight_overlay, true );
-    //mPluginServices->updateDisplay();
-
     Cube cGCWeight;
     cGCWeight.width = volData.width();
     cGCWeight.height = volData.height();
     cGCWeight.depth = volData.depth();
     cGCWeight.data = outputWeightImage;
     cGCWeight.wh = volData.width()*volData.height();
-    GraphCut g;
-    printf("[Main] Extracting sub-cube\n");
-    g.extractSubCube(binData.data(),
-                     cGCWeight.data,
-                     labelInput,
-                     sourcePoints,sinkPoints,
-                     cGCWeight.width,cGCWeight.height,cGCWeight.depth);
-    printf("[Main] Running max-flow with %ld sources and %ld sinks\n", sourcePoints.size(), sinkPoints.size());
-    g.run_maxflow(&cGCWeight,sourcePoints,sinkPoints,sigma,seedRadius);
 
-    unsigned char* output_data1d = 0;
+    Matrix3D<OverlayType> &scoreImage = mPluginServices->getOverlayVolumeData(idx_bindata_overlay);
+    bool use_histograms = true;
+    int ccId = -1;
+    LabelImageType* ptrLabelInput = 0;
+
+    eUnaryWeights unaryType = UNARY_NONE;
+    if(idx == 1) {
+        unaryType = UNARY_SCORE;
+        use_histograms = false;
+    }
+
+    if(!scoreImage.isEmpty() && idx == 0) {
+        //exportTIFCube(binData.data(),"temp_binCube",volData.depth(),volData.height(),volData.width());
+
+        //LabelImageType::Pointer labelInput = getLabelImage<TInputPixelType,LabelImageType>(inputData,nx,ny,nz);
+        LabelImageType::Pointer labelInput = getLabelImage<uchar,LabelImageType>(scoreImage.data(),scoreImage.width(),scoreImage.height(),scoreImage.depth());
+
+        // check that seed points belong to the same connected component
+        std::vector<Point>::iterator it = sinkPoints.begin();
+        ptrLabelInput = labelInput.GetPointer();
+        LabelImageType::IndexType index;
+        index[0] = it->x; index[1] = it->y; index[2] = it->z;
+        ccId = ptrLabelInput->GetPixel(index);
+        for(; it != sinkPoints.end(); ++it) {
+            index[0] = it->x; index[1] = it->y; index[2] = it->z;
+            int _ccId = ptrLabelInput->GetPixel(index);
+            if(ccId != _ccId) {
+                printf("Info: seed points belong to different connected components.\n");
+                use_histograms = false;
+                ccId = -1;
+                break;
+            }
+        }
+        if(!use_histograms) {
+            for(it = sourcePoints.begin(); it != sourcePoints.end(); ++it) {
+                index[0] = it->x; index[1] = it->y; index[2] = it->z;
+                int _ccId = ptrLabelInput->GetPixel(index);
+                if(ccId != _ccId) {
+                    printf("Info: seed points belong to different connected components.\n");
+                    use_histograms = false;
+                    ccId = -1;
+                    break;
+                }
+            }
+        }
+
+        printf("[Main] Extracting sub-cube using conncted component\n");
+        g.extractSubCube(scoreImage.data(),
+                         cGCWeight.data,
+                         labelInput,
+                         sourcePoints,sinkPoints,
+                         cGCWeight.width,cGCWeight.height,cGCWeight.depth);
+    } else {
+        printf("[Main] Extracting sub-cube (fixed size)\n");
+        g.extractSubCube(cGCWeight.data,
+                         sourcePoints,sinkPoints,
+                         cGCWeight.width,cGCWeight.height,cGCWeight.depth);
+    }
+
+    if(use_histograms) {
+        unaryType = UNARY_HISTOGRAMS;
+    }
+
+    printf("ccId = %d, use_histograms = %d, unaryType = %d\n", ccId, (int)use_histograms, (int)unaryType);
+
+    /*
+    LabelImageType* pLabelInput = labelInput.GetPointer();
+
+    // copy label image to overlay
+    const int idx_label_overlay = 4;
+    Matrix3D<OverlayType> &labelMatrix = mPluginServices->getOverlayVolumeData(idx_label_overlay);
+    labelMatrix.reallocSizeLike(volData);
+    dPtr = labelMatrix.data();
+    for(ulong i = 0; i < cubeSize; i++) {
+        dPtr[i] = pLabelInput[i];
+    }
+    mPluginServices->setOverlayVisible( idx_label_overlay, true );
+    */
+
     Cube originalCube;
     originalCube.width = volData.width();
     originalCube.height = volData.height();
     originalCube.depth = volData.depth();
-    originalCube.data = binData.data();
+    if(scoreImage.isEmpty()) {
+        originalCube.data = 0;
+    } else {
+        originalCube.data = scoreImage.data();
+    }
     originalCube.wh = originalCube.width*originalCube.height;
 
-    output_data1d = new uchar[cubeSize];
-    //memcpy(output_data1d,pOriginalImage->getRawData(),cubeSize);
-    memcpy(output_data1d,binData.data(),cubeSize);
-    //memset(output_data1d,0,cubeSize);
-    printf("Applying cut\n");
-    g.getOutput(&originalCube, output_data1d);
-    g.applyCut(ptrLabelInput, &originalCube, output_data1d, ccId);
+    printf("Running max-flow with %ld sources and %ld sinks\n", sourcePoints.size(), sinkPoints.size());
+    g.run_maxflow(&cGCWeight, sourcePoints, sinkPoints, sigma, seedRadius, unaryType, &originalCube);
 
-    printf("Exporting cube to output_data1d\n");
-    exportTIFCube(output_data1d,"output_data1d",volData.depth(),volData.height(),volData.width());
+    // debug
+    g.displayCounts();
+
+    unsigned char* output_data1d = new uchar[cubeSize];
+    if(!use_histograms) {
+        memcpy(output_data1d,scoreImage.data(),cubeSize);
+    }
+
+    printf("Copy output\n");
+    g.getOutput(&originalCube, output_data1d);
+    if(ccId != -1) {
+        printf("Applying cut\n");
+        g.applyCut(ptrLabelInput, &originalCube, output_data1d, ccId);
+    }
+
+    //printf("Exporting cube to output_data1d\n");
+    //exportTIFCube(output_data1d,"output_data1d",volData.depth(),volData.height(),volData.width());
 
     // copy output to a new overlay    
     Matrix3D<OverlayType> &ovMatrix = mPluginServices->getOverlayVolumeData(idx_output_overlay);
     ovMatrix.reallocSizeLike(volData);
-    //LabelType *dPtr = ovMatrix.data();
     dPtr = ovMatrix.data();
     for(ulong i = 0; i < cubeSize; i++) {
         dPtr[i] = output_data1d[i];
     }
 
     // set enabled
+    mPluginServices->setOverlayVisible( idx_weight_overlay, true );
     mPluginServices->setOverlayVisible( idx_output_overlay, true );
     mPluginServices->updateDisplay();
 

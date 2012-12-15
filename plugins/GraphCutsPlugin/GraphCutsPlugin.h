@@ -29,10 +29,17 @@ public:
         mPluginServices = &pServices;
 
         /** Add a menu item **/
-        //for (unsigned int i=0; i < mPluginServices->getMaxOverlayVolumes(); i++) {
         {
             unsigned int i = 0;
-            QAction *action = mPluginServices->getPluginMenu()->addAction( QString("Run %1").arg(i+1) );
+            QAction *action = mPluginServices->getPluginMenu()->addAction( QString("Run") );
+            action->setData(i);
+            connect( action, SIGNAL(triggered()), this, SLOT(runGraphCuts()) );
+        }
+
+        /** Add a menu item **/
+        {
+            unsigned int i = 1;
+            QAction *action = mPluginServices->getPluginMenu()->addAction( QString("Run (scores)") );
             action->setData(i);
             connect( action, SIGNAL(triggered()), this, SLOT(runGraphCuts()) );
         }
@@ -60,7 +67,7 @@ public:
 
     // must return the plugin's name
     QString pluginName() {
-        return "Test plugin";
+        return "GraphCut plugin";
     }
 
     virtual void  mouseMoveEvent( QMouseEvent *evt, unsigned int imgX, unsigned int imgY, unsigned int imgZ )

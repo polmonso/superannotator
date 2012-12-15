@@ -71,6 +71,12 @@ struct Cube
   }
 };
 
+enum eUnaryWeights {
+    UNARY_NONE = 0,
+    UNARY_HISTOGRAMS,
+    UNARY_SCORE
+};
+
 //-----------------------------------------------------------------------------
 
 class GraphCut
@@ -93,6 +99,8 @@ class GraphCut
 
   unsigned long at(int i, int j, int k);
 
+  void displayCounts();
+
   template <typename TInputPixelType>
     void extractSubCube(TInputPixelType* inputData,
                         TInputPixelType* weights,
@@ -100,6 +108,12 @@ class GraphCut
                         vector<Point>& sourcePoints,
                         vector<Point>& sinkPoints,
                         long nx, long ny, long nz);
+
+  template <typename TInputPixelType>
+    void extractSubCube(TInputPixelType* weights,
+                      vector<Point>& sourcePoints,
+                      vector<Point>& sinkPoints,
+                      long nx, long ny, long nz);
 
   void getCubeSize(ulong& cubeWidth,
                    ulong& cubeHeight,
@@ -109,7 +123,8 @@ class GraphCut
  
   void run_maxflow(Cube* cube,
                    vector<Point>& sourcePoints, vector<Point>& sinkPoints,
-                   float sigma = 100.0f, int minDist = 3);
+                   float sigma = 100.0f, int minDist = 3,
+                   eUnaryWeights unaryType = UNARY_NONE, Cube* scores = 0);
  
   GraphType *m_graph;
 
@@ -198,8 +213,85 @@ void GraphCut::extractSubCube(TInputPixelType* inputData,
           ++cubeIdx;
         }
 
-  exportTIFCube(subCube->data, "subCube", subCube->depth, subCube->height, subCube->width);
+  //exportTIFCube(subCube->data, "subCube", subCube->depth, subCube->height, subCube->width);
 }
 
+template <typename TInputPixelType>
+void GraphCut::extractSubCube(TInputPixelType* weights,
+                              vector<Point>& sourcePoints,
+                              vector<Point>& sinkPoints,
+                              long nx, long ny, long nz)
+{
+  const int max_width = 200;
+  const int max_height = 200;
+  const int max_depth = 100;
+
+  Point centerSource;
+  centerSource.x = 0;
+  centerSource.y = 0;
+  centerSource.z = 0;
+  for(vector<Point>::iterator itPoint=sourcePoints.begin();
+      itPoint != sourcePoints.end();itPoint++) {
+      centerSource.x += itPoint->x;
+      centerSource.y += itPoint->y;
+      centerSource.z += itPoint->z;
+  }
+  centerSource.x /= sourcePoints.size();
+  centerSource.y /= sourcePoints.size();
+  centerSource.z /= sourcePoints.size();
+
+  Point centerSink;
+  centerSink.x = 0;
+  centerSink.y = 0;
+  centerSink.z = 0;
+  for(vector<Point>::iterator itPoint=sinkPoints.begin();
+      itPoint != sinkPoints.end();itPoint++) {
+      centerSink.x += itPoint->x;
+      centerSink.y += itPoint->y;
+      centerSink.z += itPoint->z;
+  }
+  centerSink.x /= sinkPoints.size();
+  centerSink.y /= sinkPoints.size();
+  centerSink.z /= sinkPoints.size();
+
+  Point center;
+  center.x = (centerSource.x + centerSink.x)/2;
+  center.y = (centerSource.y + centerSink.y)/2;
+  center.z = (centerSource.z + centerSink.z)/2;
+
+  subX = max(0, center.x - max_width/2);
+  subY = max(0, center.y - max_height/2);
+  subZ = max(0, center.z - max_depth/2);
+
+  printf("Setting sub-cube. position=(%ld,%ld,%ld)\n", subX, subY, subZ);
+  if(subCube)
+      delete[] subCube;
+  subCube = new Cube(true);
+  subCube->width = min((ulong)max_width, nx-subX);
+  subCube->height = min((ulong)max_height, ny-subY);
+  subCube->depth = min((ulong)max_depth, nz-subZ);
+  ulong sub_cubeSize = subCube->width*subCube->height*subCube->depth;
+  subCube->data = new uchar[sub_cubeSize];
+
+  ulong sliceSize = nx*ny;
+  ulong cubeSize = nx*ny*nz;
+  ulong cubeIdx = 0;
+  ulong inputIdx;
+  for(int k = 0; k < subCube->depth; k++)
+    for(int j = 0; j < subCube->height; j++)
+      for(int i = 0; i < subCube->width; i++)
+        {
+          inputIdx = (k+subZ)*sliceSize + (j+subY)*nx + (i+subX);
+          if(inputIdx>=cubeSize) {
+              printf("inputIdx>=cubeSize (%d %d %d) (%d %d %d) (%d %d %d) %ld %ld\n",
+                      i, j, k, subX, subY, subZ, nx, ny, nz, inputIdx, cubeSize);
+          }
+          assert(inputIdx<cubeSize);
+          subCube->data[cubeIdx] = weights[inputIdx];
+          ++cubeIdx;
+        }
+
+  //exportTIFCube(subCube->data, "subCube", subCube->depth, subCube->height, subCube->width);
+}
 
 #endif //GRAPHCUT_H_
