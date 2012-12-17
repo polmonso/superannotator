@@ -194,6 +194,7 @@ void GraphCut::extractSubCube(TInputPixelType* inputData,
   subCube->width = sizeType[0];
   subCube->height = sizeType[1];
   subCube->depth = sizeType[2];
+  subCube->wh = subCube->width*subCube->height;
 
   ulong sliceSize = nx*ny;
   ulong cubeSize = nx*ny*nz;
@@ -270,6 +271,7 @@ void GraphCut::extractSubCube(TInputPixelType* weights,
   subCube->width = min((ulong)max_width, nx-subX);
   subCube->height = min((ulong)max_height, ny-subY);
   subCube->depth = min((ulong)max_depth, nz-subZ);
+  subCube->wh = subCube->width*subCube->height;
   ulong sub_cubeSize = subCube->width*subCube->height*subCube->depth;
   subCube->data = new uchar[sub_cubeSize];
 

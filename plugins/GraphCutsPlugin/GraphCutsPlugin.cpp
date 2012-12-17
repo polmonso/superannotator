@@ -104,6 +104,7 @@ void GraphCutsPlugin::runGraphCuts()
     Matrix3D<OverlayType> &scoreImage = mPluginServices->getOverlayVolumeData(idx_bindata_overlay);
     bool use_histograms = true;
     int ccId = -1;
+    LabelImageType::Pointer labelInput = 0;
     LabelImageType* ptrLabelInput = 0;
 
     eUnaryWeights unaryType = UNARY_NONE;
@@ -116,7 +117,7 @@ void GraphCutsPlugin::runGraphCuts()
         //exportTIFCube(binData.data(),"temp_binCube",volData.depth(),volData.height(),volData.width());
 
         //LabelImageType::Pointer labelInput = getLabelImage<TInputPixelType,LabelImageType>(inputData,nx,ny,nz);
-        LabelImageType::Pointer labelInput = getLabelImage<uchar,LabelImageType>(scoreImage.data(),scoreImage.width(),scoreImage.height(),scoreImage.depth());
+        labelInput = getLabelImage<uchar,LabelImageType>(scoreImage.data(),scoreImage.width(),scoreImage.height(),scoreImage.depth());
 
         // check that seed points belong to the same connected component
         std::vector<Point>::iterator it = sinkPoints.begin();
