@@ -242,6 +242,10 @@ void GraphCut::run_maxflow(Cube* cube,
   for(int k = 0;k<nk;k++) {
     for(int j = 0;j<nj;j++) {
       for(int i = 0;i<ni;i++,nodeIdx++) {
+
+        if(scores->at(i+subX,j+subY,k+subZ) == 0) // background
+            continue;
+
         // Compute regional term
         weightToSink = 0.;
         weightToSource = 0;
@@ -323,14 +327,14 @@ void GraphCut::run_maxflow(Cube* cube,
             break;
         }
 
-        //if(weightToSource != 0 || weightToSink != 0)
-        //  printf("(%d,%d,%d) : %f/%f\n",i,j,k,weightToSource,weightToSink);
-        m_graph->add_tweights(m_node_ids[nodeIdx],weightToSource,weightToSink);
-
+        if(weightToSource != 0 || weightToSink != 0) {
+            //  printf("(%d,%d,%d) : %f/%f\n",i,j,k,weightToSource,weightToSink);
+            m_graph->add_tweights(m_node_ids[nodeIdx],weightToSource,weightToSink);
+        }
 
         // Compute boundary term
         // B(p,q) = exp(-(Ip - Iq)^2 / 2*sigma)/dist(p,q)
-        if(i+1 < ni && (m_node_ids[nodeIdx] != m_node_ids[at(i+1,j,k)]))
+        if(i+1 < ni && (m_node_ids[nodeIdx] != m_node_ids[at(i+1,j,k)]) && (scores->at(i+1+subX,j+subY,k+subZ) != 0))
           {
             //weight = exp(-pow((cube->at(i,j,k)-cube->at(i+1,j,k))*sigma,2.f));
             weight = pow(cube->at(i,j,k)-cube->at(i+1,j,k),2.0f);
@@ -341,7 +345,7 @@ void GraphCut::run_maxflow(Cube* cube,
             nEdges++;
           }
 
-        if(j+1 < nj && (m_node_ids[nodeIdx] != m_node_ids[at(i,j+1,k)]))
+        if(j+1 < nj && (m_node_ids[nodeIdx] != m_node_ids[at(i,j+1,k)]) && (scores->at(i+subX,j+1+subY,k+subZ) != 0))
           {
             //weight = exp(-pow((cube->at(i,j,k)-cube->at(i,j+1,k))*sigma,2.f));
             weight = pow(cube->at(i,j,k)-cube->at(i,j+1,k),2.0f);
@@ -350,7 +354,7 @@ void GraphCut::run_maxflow(Cube* cube,
             //printf("(%d,%d,%d)-(%d,%d,%d) : %f\n",i,j,k,i,j+1,k,weight);
             nEdges++;
           }
-        if(k+1 < nk && (m_node_ids[nodeIdx] != m_node_ids[at(i,j,k+1)]))
+        if(k+1 < nk && (m_node_ids[nodeIdx] != m_node_ids[at(i,j,k+1)]) && (scores->at(i+subX,j+subY,k+1+subZ) != 0))
           {
             //weight = exp(-pow((cube->at(i,j,k)-cube->at(i,j,k+1))*sigma,2.f));
             weight = pow(cube->at(i,j,k)-cube->at(i,j,k+1),2.0f);

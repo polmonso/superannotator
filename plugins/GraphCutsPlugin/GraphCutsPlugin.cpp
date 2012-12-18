@@ -102,7 +102,8 @@ void GraphCutsPlugin::runGraphCuts()
     cGCWeight.wh = volData.width()*volData.height();
 
     Matrix3D<OverlayType> &scoreImage = mPluginServices->getOverlayVolumeData(idx_bindata_overlay);
-    bool use_histograms = true;
+    //bool use_histograms = true;
+    bool use_histograms = false;
     int ccId = -1;
     LabelImageType::Pointer labelInput = 0;
     LabelImageType* ptrLabelInput = 0;
@@ -128,8 +129,9 @@ void GraphCutsPlugin::runGraphCuts()
         for(; it != sinkPoints.end(); ++it) {
             index[0] = it->x; index[1] = it->y; index[2] = it->z;
             int _ccId = ptrLabelInput->GetPixel(index);
-            if(ccId != _ccId) {
-                printf("Info: seed points belong to different connected components.\n");
+            // _ccId = 0 means background
+            if(_ccId != 0 && ccId != _ccId) {
+                printf("Info: seed points belong to different connected components %d %d.\n", ccId, _ccId);
                 use_histograms = false;
                 ccId = -1;
                 break;
@@ -139,8 +141,9 @@ void GraphCutsPlugin::runGraphCuts()
             for(it = sourcePoints.begin(); it != sourcePoints.end(); ++it) {
                 index[0] = it->x; index[1] = it->y; index[2] = it->z;
                 int _ccId = ptrLabelInput->GetPixel(index);
-                if(ccId != _ccId) {
-                    printf("Info: seed points belong to different connected components.\n");
+                // _ccId = 0 means background
+                if(_ccId != 0 && ccId != _ccId) {
+                    printf("Info: seed points belong to different connected components %d %d.\n", ccId, _ccId);
                     use_histograms = false;
                     ccId = -1;
                     break;
@@ -165,21 +168,29 @@ void GraphCutsPlugin::runGraphCuts()
         unaryType = UNARY_HISTOGRAMS;
     }
 
-    printf("ccId = %d, use_histograms = %d, unaryType = %d\n", ccId, (int)use_histograms, (int)unaryType);
+    printf("ccId = %d, use_histograms = %d, unaryType = %d\n", ccId, (int)use_histograms, (int)unaryType);    
 
-    /*
-    LabelImageType* pLabelInput = labelInput.GetPointer();
-
-    // copy label image to overlay
-    const int idx_label_overlay = 4;
-    Matrix3D<OverlayType> &labelMatrix = mPluginServices->getOverlayVolumeData(idx_label_overlay);
-    labelMatrix.reallocSizeLike(volData);
-    dPtr = labelMatrix.data();
-    for(ulong i = 0; i < cubeSize; i++) {
-        dPtr[i] = pLabelInput[i];
+    if(ptrLabelInput != 0) {
+        // copy label image to overlay
+        LabelImageType::IndexType index;
+        LabelImageType::PixelType pixel;
+        const int idx_label_overlay = 4;
+        Matrix3D<OverlayType> &labelMatrix = mPluginServices->getOverlayVolumeData(idx_label_overlay);
+        labelMatrix.reallocSizeLike(volData);
+        dPtr = labelMatrix.data();
+        ulong cubeIdx = 0;
+        for(ulong z = 0; z < volData.depth(); z++) {
+            for(ulong y = 0; y < volData.height(); y++) {
+                for(ulong x = 0; x < volData.width(); x++) {
+                    index[0] = x; index[1] = y; index[2] = z;
+                    pixel = ptrLabelInput->GetPixel(index);
+                    dPtr[cubeIdx] = (uchar)pixel;
+                    ++cubeIdx;
+                }
+            }
+        }
+        mPluginServices->setOverlayVisible( idx_label_overlay, true );
     }
-    mPluginServices->setOverlayVisible( idx_label_overlay, true );
-    */
 
     Cube originalCube;
     originalCube.width = volData.width();
@@ -221,7 +232,7 @@ void GraphCutsPlugin::runGraphCuts()
         dPtr[i] = output_data1d[i];
     }
 
-    // set enabled
+    // set enabled    
     mPluginServices->setOverlayVisible( idx_weight_overlay, true );
     mPluginServices->setOverlayVisible( idx_output_overlay, true );
     mPluginServices->updateDisplay();
