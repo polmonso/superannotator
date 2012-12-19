@@ -21,12 +21,18 @@ void exportTIFCube(uchar* rawData,
                    int cubeHeight,
                    int cubeWidth);
 
+void exportColorTIFCube(uchar* rawData,
+                        const char* filename,
+                        int cubeDepth,
+                        int cubeHeight,
+                        int cubeWidth);
+
 void cubeFloat2Uchar(float* inputData, uchar*& outputData,
                      int nx, int ny, int nz);
 
 template <typename TInputPixelType, typename LabelImageType>
 typename LabelImageType::Pointer getLabelImage(TInputPixelType* inputData,
-                                               long nx, long ny, long nz)
+                                               long nx, long ny, long nz, ulong* nObjects = 0)
 {
   const unsigned int Dimension = 3;
   typedef itk::Image< TInputPixelType, Dimension > InputImageType;
@@ -76,6 +82,11 @@ typename LabelImageType::Pointer getLabelImage(TInputPixelType* inputData,
   // run filter
   ccFilter->SetInput(importFilter->GetOutput());
   ccFilter->Update();
+
+  if(nObjects) {
+      *nObjects = ccFilter->GetObjectCount();
+  }
+  printf("Number of objects: %d\n", ccFilter->GetObjectCount());
 
   LabelImageType* labelImage = ccFilter->GetOutput();
   return labelImage;

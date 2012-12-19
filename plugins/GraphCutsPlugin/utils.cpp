@@ -60,6 +60,58 @@ void exportTIFCube(uchar* rawData,
   writer->Update();
 }
 
+
+void exportColorTIFCube(uchar* rawData,
+                        const char* filename,
+                        int cubeDepth,
+                        int cubeHeight,
+                        int cubeWidth)
+{
+  // import data to an itk image
+  const int dimension = 3;
+  typedef uchar TInputPixelType;
+  typedef itk::RGBPixel<TInputPixelType> RGBPixelType;
+  typedef itk::Image< RGBPixelType, dimension > InputImageType;
+  typedef itk::Image< RGBPixelType, dimension > OutputImageType;
+  typedef itk::ImportImageFilter< RGBPixelType, dimension > ImportFilterType;
+  ImportFilterType::Pointer importFilter = ImportFilterType::New();
+
+  ImportFilterType::SizeType size;
+  size[0] = cubeWidth;
+  size[1] = cubeHeight;
+  size[2] = cubeDepth;
+
+  ImportFilterType::IndexType start;
+  start.Fill(0);
+
+  ImportFilterType::RegionType region;
+  region.SetIndex(start);
+  region.SetSize(  size  );
+
+  importFilter->SetRegion( region );
+
+  InputImageType::PointType origin;
+  origin.Fill(0.0);
+
+  importFilter->SetOrigin( origin );
+
+  ImportFilterType::SpacingType spacing;
+  spacing.Fill(1.0);
+
+  importFilter->SetSpacing( spacing );
+  RGBPixelType* localBuffer = reinterpret_cast<RGBPixelType* >(rawData);
+  importFilter->SetImportPointer(localBuffer, 0, false);
+
+  stringstream sout;
+  sout << filename << ".tif";
+  //printf("[Utils] Writing output cube %s\n", sout.str().c_str());
+  typedef itk::ImageFileWriter< OutputImageType > WriterType;
+  WriterType::Pointer writer = WriterType::New();
+  writer->SetFileName(sout.str().c_str());
+  writer->SetInput(importFilter->GetOutput());
+  writer->Update();
+}
+
 void cubeFloat2Uchar(float* inputData, uchar*& outputData,
                      int nx, int ny, int nz)
 {

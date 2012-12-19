@@ -105,6 +105,7 @@ void GraphCutsPlugin::runGraphCuts()
     //bool use_histograms = true;
     bool use_histograms = false;
     int ccId = -1;
+    ulong nObjects = 0;
     LabelImageType::Pointer labelInput = 0;
     LabelImageType* ptrLabelInput = 0;
 
@@ -117,8 +118,8 @@ void GraphCutsPlugin::runGraphCuts()
     if(!scoreImage.isEmpty() && idx == 0) {
         //exportTIFCube(binData.data(),"temp_binCube",volData.depth(),volData.height(),volData.width());
 
-        //LabelImageType::Pointer labelInput = getLabelImage<TInputPixelType,LabelImageType>(inputData,nx,ny,nz);
-        labelInput = getLabelImage<uchar,LabelImageType>(scoreImage.data(),scoreImage.width(),scoreImage.height(),scoreImage.depth());
+        //LabelImageType::Pointer labelInput = getLabelImage<TInputPixelType,LabelImageType>(inputData,nx,ny,nz);        
+        labelInput = getLabelImage<uchar,LabelImageType>(scoreImage.data(),scoreImage.width(),scoreImage.height(),scoreImage.depth(),&nObjects);
 
         // check that seed points belong to the same connected component
         std::vector<Point>::iterator it = sinkPoints.begin();
@@ -174,22 +175,43 @@ void GraphCutsPlugin::runGraphCuts()
         // copy label image to overlay
         LabelImageType::IndexType index;
         LabelImageType::PixelType pixel;
-        const int idx_label_overlay = 4;
-        Matrix3D<OverlayType> &labelMatrix = mPluginServices->getOverlayVolumeData(idx_label_overlay);
-        labelMatrix.reallocSizeLike(volData);
-        dPtr = labelMatrix.data();
-        ulong cubeIdx = 0;
-        for(ulong z = 0; z < volData.depth(); z++) {
-            for(ulong y = 0; y < volData.height(); y++) {
-                for(ulong x = 0; x < volData.width(); x++) {
-                    index[0] = x; index[1] = y; index[2] = z;
-                    pixel = ptrLabelInput->GetPixel(index);
-                    dPtr[cubeIdx] = (uchar)pixel;
-                    ++cubeIdx;
+
+        if(nObjects < 255) {
+            const int idx_label_overlay = 4;
+            Matrix3D<OverlayType> &labelMatrix = mPluginServices->getOverlayVolumeData(idx_label_overlay);
+            labelMatrix.reallocSizeLike(volData);
+            dPtr = labelMatrix.data();
+            ulong cubeIdx = 0;
+            float objToIndex = 255.0/nObjects;
+            for(ulong z = 0; z < volData.depth(); z++) {
+                for(ulong y = 0; y < volData.height(); y++) {
+                    for(ulong x = 0; x < volData.width(); x++) {
+                        index[0] = x; index[1] = y; index[2] = z;
+                        pixel = ptrLabelInput->GetPixel(index);
+                        dPtr[cubeIdx] = (uchar)pixel*objToIndex;
+                        ++cubeIdx;
+                    }
                 }
             }
+            mPluginServices->setOverlayVisible( idx_label_overlay, true );
+        } else {
+            ulong cubeSize = volData.depth()*volData.height()*volData.width()*3;
+            uchar* dPtr = new uchar[cubeSize];
+            ulong cubeIdx = 0;
+            for(ulong z = 0; z < volData.depth(); z++) {
+                for(ulong y = 0; y < volData.height(); y++) {
+                    for(ulong x = 0; x < volData.width(); x++) {
+                        index[0] = x; index[1] = y; index[2] = z;
+                        pixel = ptrLabelInput->GetPixel(index);
+                        dPtr[cubeIdx] = (uchar)pixel&0xff;
+                        dPtr[cubeIdx+1] = (uchar)pixel&0xff00;
+                        dPtr[cubeIdx+2] = (uchar)pixel&0xff0000;
+                        cubeIdx += 3;
+                    }
+                }
+            }
+            exportColorTIFCube(dPtr, "cc", volData.depth(), volData.height(), volData.width());
         }
-        mPluginServices->setOverlayVisible( idx_label_overlay, true );
     }
 
     Cube originalCube;
