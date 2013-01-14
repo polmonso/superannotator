@@ -177,6 +177,8 @@ public slots:
     void overlayChooseColorTriggered();
 
     void overlaySaveTriggered();
+
+    void overlayRescaleTriggered();
 };
 
 #endif // ANNOTATORWND_H

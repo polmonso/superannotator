@@ -269,6 +269,13 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
             connect( aColor, SIGNAL(triggered()), this, SLOT(overlayChooseColorTriggered()) );
 
+            // add button to rescale overlay
+            QAction *rescale = subMenu->addAction("Rescale...");
+            rescale->setCheckable(false);
+            rescale->setEnabled(true);
+            rescale->setData( i ); // use data as index
+
+            connect( rescale, SIGNAL(triggered()), this, SLOT(overlayRescaleTriggered()) );
 
             // and a load button too
             QAction *load = subMenu->addAction("Load from file...");
@@ -369,7 +376,7 @@ void AnnotatorWnd::overlaySaveTriggered()
     QAction *action = qobject_cast<QAction *>(sender());
     int idx = action->data().toInt();
 
-    QString fileName = QFileDialog::getOpenFileName( this, "Save overlay image", mSettingsData.savePathScores, mFileTypeFilter );
+    QString fileName = QFileDialog::getSaveFileName( this, "Save overlay image", mSettingsData.savePathScores, mFileTypeFilter );
 
     if (fileName.isEmpty())
         return;
@@ -390,6 +397,28 @@ void AnnotatorWnd::overlaySaveTriggered()
 
     mSettingsData.savePathScores = QFileInfo(fileName).absolutePath();
     this->saveSettings();
+}
+
+void AnnotatorWnd::overlayRescaleTriggered()
+{
+    QAction *action = qobject_cast<QAction *>(sender());
+    int idx = action->data().toInt();
+
+    // ask for gaussian variance
+    bool ok = false;
+    float scale = QInputDialog::getDouble(0, "Scale", "Specify value used to rescale overlay", 0.5, 0.1, 1.0f, 1, &ok);
+    if (!ok) return;
+
+    // generate list of seeds
+    Matrix3D<OverlayType>* dataOverlay = mOverlayVolumeList[idx];
+
+    for(int x = 0; x < dataOverlay->width(); ++x) {
+        for(int y = 0; y < dataOverlay->height(); ++y) {
+            for(int z = 0; z < dataOverlay->depth(); ++z) {
+                (*dataOverlay)(x,y,z) *= scale;
+            }
+        }
+    }
 }
 
 Matrix3D<OverlayType> &  AnnotatorWnd::getOverlayVoxelData( unsigned int num )
