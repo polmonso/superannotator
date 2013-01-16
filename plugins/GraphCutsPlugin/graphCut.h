@@ -95,7 +95,7 @@ class GraphCut
   GraphCut();
   ~GraphCut();
 
-  void applyCut(LabelImageType* ptrLabelInput, Cube* inputCube, unsigned char* output_data, int ccId);
+  void applyCut(LabelImageType* ptrLabelInput, Cube* inputCube, unsigned char* output_data, int ccId, unsigned char* scoreImage);
 
   unsigned long at(int i, int j, int k);
 
@@ -171,7 +171,7 @@ void GraphCut::extractSubCube(TInputPixelType* inputData,
       subX = indexType[0];
       subY = indexType[1];
       subZ = indexType[2];
-      printf("Object %d. position=(%ld,%ld,%ld)\n", i, subX, subY, subZ);
+      printf("Object %d. start_position=(%ld,%ld,%ld) size=(%ld,%ld,%ld) end_position=(%ld,%ld,%ld)\n", i, subX, subY, subZ, sizeType[0], sizeType[1], sizeType[2], subX+sizeType[0], subY+sizeType[1], subZ+sizeType[2]);
     }
 
   int ccID = labelInput->GetPixel(p) - 1;
@@ -188,7 +188,8 @@ void GraphCut::extractSubCube(TInputPixelType* inputData,
   subX = indexType[0];
   subY = indexType[1];
   subZ = indexType[2];
-  printf("Setting sub-cube. position=(%ld,%ld,%ld)\n", subX, subY, subZ);
+  printf("Setting sub-cube. start_position=(%ld,%ld,%ld) size=(%ld,%ld,%ld) end_position=(%ld,%ld,%ld)\n",
+         subX, subY, subZ, sizeType[0], sizeType[1], sizeType[2], subX+sizeType[0], subY+sizeType[1], subZ+sizeType[2]);
   subCube = new Cube(true);
   subCube->data = new uchar[sub_cubeSize];
   subCube->width = sizeType[0];

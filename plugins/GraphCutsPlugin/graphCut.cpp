@@ -23,7 +23,7 @@ GraphCut::~GraphCut() {
     delete subCube;
 }
 
-void GraphCut::applyCut(LabelImageType* ptrLabelInput, Cube* inputCube, unsigned char* output_data, int ccId)
+void GraphCut::applyCut(LabelImageType* ptrLabelInput, Cube* inputCube, unsigned char* output_data, int ccId, unsigned char* scoreImage)
 {
     ulong wh = ni*nj;
     ulong n = wh*nk;
@@ -39,6 +39,9 @@ void GraphCut::applyCut(LabelImageType* ptrLabelInput, Cube* inputCube, unsigned
             for(int x = 0;x < ni;x++) {
                 outputCubeIdx = ((z+subZ)*inputCube_sliceSize) + ((y+subY)*inputCube->width) + (x+subX);
                 //output_data[outputCubeIdx] = inputCube->at(i+subX,j+subY,k+subZ);
+
+                if(scoreImage[outputCubeIdx] == 0)  // background
+                    continue;
 
                 cubeIdx = (z*wh) + (y*ni) + x;
                 nodeType = m_graph->what_segment(m_node_ids[cubeIdx]);

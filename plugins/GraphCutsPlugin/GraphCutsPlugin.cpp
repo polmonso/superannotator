@@ -3,6 +3,7 @@
 #include "gaussianFilter.cxx"
 
 #include <QInputDialog>
+#include "gcdialog.h"
 #include <vector>
 #include "utils.h"
 
@@ -30,12 +31,23 @@ void GraphCutsPlugin::runGraphCuts()
     QAction *action = qobject_cast<QAction *>(sender());
     unsigned int idx = action->data().toUInt();
 
+    /*
     // ask for gaussian variance
     bool ok = false;
     float gaussianVariance = QInputDialog::getDouble(0, "Gaussian variance", "Specify the variance for the gaussian filter", 2.0, 0.6, 40.0f, 1, &ok);
     if (!ok) return;
+    */
 
-    const float sigma = 100;
+    GCDialog *window = new GCDialog;
+    window->exec();
+
+    float gaussianVariance = window->getVariance();
+    float sigma = window->getEdgeWeight();
+
+    printf("gaussianVariance %f\n", gaussianVariance);
+    printf("sigma %f\n", sigma);
+
+    //const float sigma = 100;
     const int seedRadius = 3;
 
     GraphCut g;
@@ -240,7 +252,7 @@ void GraphCutsPlugin::runGraphCuts()
     g.getOutput(&originalCube, output_data1d);
     if(ccId != -1) {
         printf("Applying cut\n");
-        g.applyCut(ptrLabelInput, &originalCube, output_data1d, ccId);
+        g.applyCut(ptrLabelInput, &originalCube, output_data1d, ccId, scoreImage.data());
     }
 
     //printf("Exporting cube to output_data1d\n");
@@ -295,5 +307,7 @@ void GraphCutsPlugin::transferOverlay()
         }
         mPluginServices->setOverlayVisible(idx_bindata_overlay, true );
         mPluginServices->updateDisplay();
-    }
+
+        cleanSeedOverlay();
+    }    
 }
