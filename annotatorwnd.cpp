@@ -419,6 +419,8 @@ void AnnotatorWnd::overlayRescaleTriggered()
             }
         }
     }
+
+    updateImageSlice();
 }
 
 Matrix3D<OverlayType> &  AnnotatorWnd::getOverlayVoxelData( unsigned int num )
