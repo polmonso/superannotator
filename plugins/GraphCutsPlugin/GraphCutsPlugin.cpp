@@ -28,29 +28,23 @@ PluginBase *createPlugin()
 
 void GraphCutsPlugin::runGraphCuts()
 {
+    const int seedRadius = 3;
+
     QAction *action = qobject_cast<QAction *>(sender());
     unsigned int idx = action->data().toUInt();
 
-    /*
-    // ask for gaussian variance
-    bool ok = false;
-    float gaussianVariance = QInputDialog::getDouble(0, "Gaussian variance", "Specify the variance for the gaussian filter", 2.0, 0.6, 40.0f, 1, &ok);
-    if (!ok) return;
-    */
+    Matrix3D<OverlayType> &scoreImage = mPluginServices->getOverlayVolumeData(idx_bindata_overlay);
+    if(scoreImage.isEmpty()) {
+        printf("Error: No score image loaded in overlay %d\n", idx_bindata_overlay);
+        return;
+    }
 
     GCDialog *window = new GCDialog;
     window->exec();
-
     float gaussianVariance = window->getVariance();
     float sigma = window->getEdgeWeight();
-
     printf("gaussianVariance %f\n", gaussianVariance);
     printf("sigma %f\n", sigma);
-
-    //const float sigma = 100;
-    const int seedRadius = 3;
-
-    GraphCut g;
 
     // generate list of seeds
     Matrix3D<ScoreType> &seedOverlay = mPluginServices->getOverlayVolumeData(0);
@@ -64,10 +58,10 @@ void GraphCutsPlugin::runGraphCuts()
                 p.x = x;
                 p.y = y;
                 p.z = z;
-                if(seedOverlay(x,y,z) == 255) {
+                if(seedOverlay(x,y,z) == 255 && scoreImage(x,y,z) != 0) {
                     sourcePoints.push_back(p);
                 } else {
-                    if(seedOverlay(x,y,z) == 128) {
+                    if(seedOverlay(x,y,z) == 128 && scoreImage(x,y,z) != 0) {
                        sinkPoints.push_back(p);
                     }
                 }
@@ -88,7 +82,6 @@ void GraphCutsPlugin::runGraphCuts()
     ulong cubeSize = volData.numElem();
 
     // get weight image
-    //float gaussianVariance = 1.0;
     float* foutputWeightImage = 0;
     gradientMagnitude<unsigned char, float>(volData.data(), volData.width(), volData.height(), volData.depth(), 1, gaussianVariance, foutputWeightImage);
 
@@ -113,8 +106,6 @@ void GraphCutsPlugin::runGraphCuts()
     cGCWeight.data = outputWeightImage;
     cGCWeight.wh = volData.width()*volData.height();
 
-    Matrix3D<OverlayType> &scoreImage = mPluginServices->getOverlayVolumeData(idx_bindata_overlay);
-    //bool use_histograms = true;
     bool use_histograms = false;
     int ccId = -1;
     ulong nObjects = 0;
@@ -126,6 +117,8 @@ void GraphCutsPlugin::runGraphCuts()
         unaryType = UNARY_SCORE;
         use_histograms = false;
     }
+
+    GraphCut g;
 
     if(!scoreImage.isEmpty() && idx == 0) {
         //exportTIFCube(binData.data(),"temp_binCube",volData.depth(),volData.height(),volData.width());
