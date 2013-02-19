@@ -1,4 +1,5 @@
 #include "graphCut.h"
+#include <climits>
 
 GraphCut::GraphCut()
 {
@@ -169,6 +170,20 @@ void GraphCut::run_maxflow(Cube* cube,
     delete m_graph;
   }
 
+  // compute max scores in sub cube (use dimension of cube as dimension of scores correspond to the whole volume)
+  int maxScore = -INT_MAX;
+  for(int k = 0;k < cube->depth;k++) {
+    for(int j = 0;j < cube->height;j++) {
+      for(int i = 0;i < cube->width;i++) {
+        int sc = scores->at(i+subX,j+subY,k+subZ);
+        if(maxScore < sc) {
+           maxScore = sc;
+        }
+      }
+    }
+  }
+  printf("[GraphCuts] maxScore = %d\n", maxScore);
+
   printf("[GraphCuts] graph size = (%d,%d,%d)\n", ni, nj, nk);
 
   // TODO : Compute correct parameters
@@ -286,7 +301,7 @@ void GraphCut::run_maxflow(Cube* cube,
             ulong cubeIdx = ((k+subZ)*scoreCube_sliceSize) + ((j+subY)*scores->width) + (i+subX);
             if(weightToSource != K && weightToSink != K) {
                 weightToSource = scores->data[cubeIdx];
-                weightToSink = max(0,128-scores->data[cubeIdx]);
+                weightToSink = max(0,maxScore-scores->data[cubeIdx]);
             }
             /*
             if(weightToSink != K) {

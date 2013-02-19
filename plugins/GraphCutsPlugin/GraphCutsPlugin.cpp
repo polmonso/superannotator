@@ -87,7 +87,7 @@ void GraphCutsPlugin::runGraphCuts()
 
     uchar* outputWeightImage = 0;
     cubeFloat2Uchar(foutputWeightImage,outputWeightImage,volData.width(), volData.height(), volData.depth());
-    exportTIFCube(outputWeightImage,"outputWeightImage",volData.depth(),volData.height(),volData.width());
+    //exportTIFCube(outputWeightImage,"outputWeightImage",volData.depth(),volData.height(),volData.width());
     delete[] foutputWeightImage;
 
     // copy weight image to overlay
@@ -215,7 +215,7 @@ void GraphCutsPlugin::runGraphCuts()
                     }
                 }
             }
-            exportColorTIFCube(dPtr, "cc", volData.depth(), volData.height(), volData.width());
+            //exportColorTIFCube(dPtr, "cc", volData.depth(), volData.height(), volData.width());
         }
     }
 
@@ -296,7 +296,7 @@ void GraphCutsPlugin::transferOverlay()
         LabelType *dPtrOutput = outputOverlay.data();
         ulong cubeSize = outputOverlay.numElem();
         for(ulong i = 0; i < cubeSize; i++) {
-            dPtrInput[i] = (dPtrOutput[i]==0)?0:255;
+            dPtrInput[i] = (dPtrOutput[i]==0)?0:76; // 76 corresponds to 30% transparent
         }
         mPluginServices->setOverlayVisible(idx_bindata_overlay, true );
         mPluginServices->updateDisplay();
