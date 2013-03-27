@@ -17,6 +17,13 @@ const int idx_seed_overlay = 0;
 const int idx_bindata_overlay = 1;
 const int idx_output_overlay = 3;
 
+enum eGCType
+{
+    GC_DEFAULT = 0,
+    GC_LIMITED,
+    GC_SCORES
+};
+
 class GraphCutsPlugin : public PluginBase
 {
     Q_OBJECT
@@ -41,17 +48,22 @@ public:
 
         /** Add a menu item **/
         {
-            unsigned int i = 0;
             QAction *action = mPluginServices->getPluginMenu()->addAction( QString("Run") );
-            action->setData(i);
+            action->setData(GC_DEFAULT);
             connect( action, SIGNAL(triggered()), this, SLOT(runGraphCuts()) );
         }
 
         /** Add a menu item **/
         {
-            unsigned int i = 1;
+            QAction *action = mPluginServices->getPluginMenu()->addAction( QString("Run (limited size)") );
+            action->setData(GC_LIMITED);
+            connect( action, SIGNAL(triggered()), this, SLOT(runGraphCuts()) );
+        }
+
+        /** Add a menu item **/
+        {
             QAction *action = mPluginServices->getPluginMenu()->addAction( QString("Run (scores)") );
-            action->setData(i);
+            action->setData(GC_SCORES);
             connect( action, SIGNAL(triggered()), this, SLOT(runGraphCuts()) );
         }
 

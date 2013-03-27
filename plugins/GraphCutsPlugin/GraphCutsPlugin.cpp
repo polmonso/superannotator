@@ -49,7 +49,6 @@ void GraphCutsPlugin::changeActiveOverlay()
     ChangeActiveOverlayDialog *window = new ChangeActiveOverlayDialog;
     window->exec();
     activeOverlay = window->getActiveOverlay();
-    printf("changeActiveOverlay activeOverlay = %d\n", activeOverlay);
 }
 
 void GraphCutsPlugin::runGraphCuts()
@@ -139,14 +138,14 @@ void GraphCutsPlugin::runGraphCuts()
     LabelImageType* ptrLabelInput = 0;
 
     eUnaryWeights unaryType = UNARY_NONE;
-    if(idx == 1) {
+    if(idx == GC_SCORES) {
         unaryType = UNARY_SCORE;
         use_histograms = false;
     }
 
     GraphCut g;
 
-    if(!scoreImage.isEmpty() && idx == 0) {
+    if(!scoreImage.isEmpty() && idx == GC_DEFAULT) {
         //exportTIFCube(binData.data(),"temp_binCube",volData.depth(),volData.height(),volData.width());
 
         //LabelImageType::Pointer labelInput = getLabelImage<TInputPixelType,LabelImageType>(inputData,nx,ny,nz);        
