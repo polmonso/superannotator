@@ -321,6 +321,27 @@ public:
         return true;
     }
 
+    void loadItkImage( ItkImageType* img )
+	{
+		freeData();
+		
+		typename ItkImageType::IndexType index;
+		index[0] = index[1] = index[2] = 0;
+
+		mData = &img->GetPixel( index );
+
+		//img->Register();    //so it won't delete the data ;)
+		img->GetPixelContainer()->SetContainerManageMemory(false);
+
+		typename ItkImageType::SizeType imSize = img->GetLargestPossibleRegion().GetSize();
+		mWidth = imSize[0];
+		mHeight = imSize[1];
+		mDepth = imSize[2];
+
+		updateCache();
+		mKeepOnDestr = false;
+	}
+    
     bool load( const std::string &fName )  // load from file
     {
         try
