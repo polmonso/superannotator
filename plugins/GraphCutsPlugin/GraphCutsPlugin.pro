@@ -6,12 +6,16 @@ HEADERS += \
     GraphCutsPlugin.h \
     graphCut.h \
     utils.h \
-    ../../PluginBase.h
+    ../../PluginBase.h \
+    gcdialog.h \
+    changeactiveoverlaydialog.h
 
 SOURCES += \
     GraphCutsPlugin.cpp \
     graphCut.cpp \
-    utils.cpp
+    utils.cpp \
+    gcdialog.cpp \
+    changeactiveoverlaydialog.cpp
 
 # ITK PATH
 include(../../customUserDefs.inc)
@@ -105,10 +109,16 @@ LIBS += -L$$ITKPATH_BUILD/bin -lITKIO -lITKStatistics -lITKNrrdIO -litkgdcm -lit
 LIBS += -luuid
 
 CONFIG(debug, debug|release) {
-    #DESTDIR = ../../../supervoxel-annotator-build-desktop/plugins
-    DESTDIR = ../../../supervoxel-annotator-build-desktop-Qt_4_8_1_in_PATH__System__Debug/plugins
+    DESTDIR = ../../../supervoxel-annotator-build-desktop/plugins
+    #DESTDIR = ../../../supervoxel-annotator-build-desktop-Qt_4_8_1_in_PATH__System__Debug/plugins
 }
 CONFIG(release, debug|release) {
-    #DESTDIR = ../../../supervoxel-annotator-build-desktop/plugins
-    DESTDIR = ../../../supervoxel-annotator-build-desktop-Qt_4_8_1_in_PATH__System__Release/plugins
+    DESTDIR = ../../../supervoxel-annotator-build-desktop/plugins
+    #DESTDIR = ../../../supervoxel-annotator-build-desktop-Qt_4_8_1_in_PATH__System__Release/plugins
 }
+
+DESTDIR = /cvlabdata1/home/biomed/EM/segmentation/bin/plugins
+
+FORMS += \
+    gcdialog.ui \
+    changeactiveoverlaydialog.ui

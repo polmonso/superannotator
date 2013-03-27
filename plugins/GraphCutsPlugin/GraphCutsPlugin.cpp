@@ -4,6 +4,7 @@
 
 #include <QInputDialog>
 #include "gcdialog.h"
+#include "changeactiveoverlaydialog.h"
 #include <vector>
 #include "utils.h"
 
@@ -24,6 +25,31 @@ extern "C" Q_DECL_EXPORT PluginBase* createPlugin();
 PluginBase *createPlugin()
 {
     return new GraphCutsPlugin();
+}
+
+GraphCutsPlugin::GraphCutsPlugin(QObject *parent) : PluginBase(parent)
+{
+    activeOverlay = 0;
+    mouseEventDetected = false;
+
+    timer = new QTimer;
+    timer->setInterval(40);
+    timer->setSingleShot(false);
+    QObject::connect(timer, SIGNAL(timeout()), this, SLOT(updateOverlay()));
+    timer->start();
+}
+
+GraphCutsPlugin::~GraphCutsPlugin()
+{
+    delete timer;
+}
+
+void GraphCutsPlugin::changeActiveOverlay()
+{
+    ChangeActiveOverlayDialog *window = new ChangeActiveOverlayDialog;
+    window->exec();
+    activeOverlay = window->getActiveOverlay();
+    printf("changeActiveOverlay activeOverlay = %d\n", activeOverlay);
 }
 
 void GraphCutsPlugin::runGraphCuts()
@@ -47,7 +73,7 @@ void GraphCutsPlugin::runGraphCuts()
     printf("sigma %f\n", sigma);
 
     // generate list of seeds
-    Matrix3D<ScoreType> &seedOverlay = mPluginServices->getOverlayVolumeData(0);
+    Matrix3D<ScoreType> &seedOverlay = mPluginServices->getOverlayVolumeData(idx_seed_overlay);
     std::vector<Point> sinkPoints;
     std::vector<Point> sourcePoints;
 
@@ -272,7 +298,7 @@ void GraphCutsPlugin::runGraphCuts()
 
 void GraphCutsPlugin::cleanSeedOverlay()
 {
-    Matrix3D<ScoreType> &seedOverlay = mPluginServices->getOverlayVolumeData(0);
+    Matrix3D<ScoreType> &seedOverlay = mPluginServices->getOverlayVolumeData(idx_seed_overlay);
 
     if (seedOverlay.isEmpty())
     {
@@ -280,7 +306,7 @@ void GraphCutsPlugin::cleanSeedOverlay()
     }
 
     seedOverlay.fill(0);
-    mPluginServices->setOverlayVisible( 0, true );
+    mPluginServices->setOverlayVisible(idx_seed_overlay, true );
     mPluginServices->updateDisplay();
 }
 

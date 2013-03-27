@@ -9,9 +9,11 @@
 #include <cstdlib>
 #include <QMessageBox>
 #include <QMouseEvent>
+#include <QTimer>
 
 using namespace std;
 
+const int idx_seed_overlay = 0;
 const int idx_bindata_overlay = 1;
 const int idx_output_overlay = 3;
 
@@ -21,8 +23,17 @@ class GraphCutsPlugin : public PluginBase
 private:
     const PluginServices* mPluginServices;
 
+    QTimer* timer;
+
+    // id of the active overlay
+    int activeOverlay;
+
+    bool mouseEventDetected;
+
 public:
-    GraphCutsPlugin(QObject *parent = 0) : PluginBase(parent) {}
+    GraphCutsPlugin(QObject *parent = 0);
+
+    ~GraphCutsPlugin();
 
     bool    initializePlugin( const PluginServices &pServices )
     {
@@ -58,6 +69,12 @@ public:
 
         /** Add a menu item **/
         {
+        QAction *action = mPluginServices->getPluginMenu()->addAction( "Change active overlay" );
+        connect( action, SIGNAL(triggered()), this, SLOT(changeActiveOverlay()) );
+        }
+
+        /** Add a menu item **/
+        {
         QAction *action = mPluginServices->getPluginMenu()->addAction( "Show message box" );
         connect( action, SIGNAL(triggered()), this, SLOT(showMsgBoxClicked()) );
         }
@@ -75,39 +92,40 @@ public:
         if ( (evt->buttons() & Qt::LeftButton) == 0 && (evt->buttons() & Qt::RightButton) == 0)
            return;
 
-        Matrix3D<ScoreType> &scoreMatrix = mPluginServices->getOverlayVolumeData(0);
+        //printf("mouseMoveEvent %x activeOverlay = %d\n", this, activeOverlay);
+        Matrix3D<ScoreType> &activeOverlayMatrix = mPluginServices->getOverlayVolumeData(activeOverlay);
 
-        if (scoreMatrix.isEmpty())
+        if (activeOverlayMatrix.isEmpty())
         {
-            scoreMatrix.reallocSizeLike( mPluginServices->getVolumeVoxelData() );
-            scoreMatrix.fill(0);
+            activeOverlayMatrix.reallocSizeLike( mPluginServices->getVolumeVoxelData() );
+            activeOverlayMatrix.fill(0);
         }
 
         if (evt->buttons() & Qt::RightButton) {
-            for(int x = max(0, (int)imgX - 1); x <= min(scoreMatrix.width()-1, imgX + 1); ++x) {
-                for(int y = max(0, (int)imgY - 1); y <= min(scoreMatrix.height()-1, imgY + 1); ++y) {
-                    for(int z = max(0, (int)imgZ - 1); z <= min(scoreMatrix.depth()-1, imgZ + 1); ++z) {
-                        scoreMatrix(x,y,z) = 0;
+            for(int x = max(0, (int)imgX - 1); x <= min(activeOverlayMatrix.width()-1, imgX + 1); ++x) {
+                for(int y = max(0, (int)imgY - 1); y <= min(activeOverlayMatrix.height()-1, imgY + 1); ++y) {
+                    for(int z = max(0, (int)imgZ - 1); z <= min(activeOverlayMatrix.depth()-1, imgZ + 1); ++z) {
+                        activeOverlayMatrix(x,y,z) = 0;
                     }
                 }
             }
            // scoreMatrix( imgX, imgY, imgZ ) = 0;
         } else {
             if (evt->modifiers() & Qt::ShiftModifier) {
-                for(int x = max(0, (int)imgX - 1); x <= min(scoreMatrix.width()-1, imgX + 1); ++x) {
-                    for(int y = max(0, (int)imgY - 1); y <= min(scoreMatrix.height()-1, imgY + 1); ++y) {
-                        for(int z = max(0, (int)imgZ - 1); z <= min(scoreMatrix.depth()-1, imgZ + 1); ++z) {
-                            scoreMatrix(x,y,z) = 128;
+                for(int x = max(0, (int)imgX - 1); x <= min(activeOverlayMatrix.width()-1, imgX + 1); ++x) {
+                    for(int y = max(0, (int)imgY - 1); y <= min(activeOverlayMatrix.height()-1, imgY + 1); ++y) {
+                        for(int z = max(0, (int)imgZ - 1); z <= min(activeOverlayMatrix.depth()-1, imgZ + 1); ++z) {
+                            activeOverlayMatrix(x,y,z) = 128;
                         }
                     }
                 }
                // scoreMatrix( imgX, imgY, imgZ ) = 128;
             }
             else {
-                for(int x = max(0, (int)imgX - 1); x <= min(scoreMatrix.width()-1, imgX + 1); ++x) {
-                    for(int y = max(0, (int)imgY - 1); y <= min(scoreMatrix.height()-1, imgY + 1); ++y) {
-                        for(int z = max(0, (int)imgZ - 1); z <= min(scoreMatrix.depth()-1, imgZ + 1); ++z) {
-                            scoreMatrix(x,y,z) = 255;
+                for(int x = max(0, (int)imgX - 1); x <= min(activeOverlayMatrix.width()-1, imgX + 1); ++x) {
+                    for(int y = max(0, (int)imgY - 1); y <= min(activeOverlayMatrix.height()-1, imgY + 1); ++y) {
+                        for(int z = max(0, (int)imgZ - 1); z <= min(activeOverlayMatrix.depth()-1, imgZ + 1); ++z) {
+                            activeOverlayMatrix(x,y,z) = 255;
                         }
                     }
                 }
@@ -116,11 +134,14 @@ public:
             }
         }
 
-        mPluginServices->setOverlayVisible( 0, true );
-        mPluginServices->updateDisplay();
+        mouseEventDetected = true;
+        //mPluginServices->setOverlayVisible(activeOverlay, true );
+        //mPluginServices->updateDisplay();
     }
 
 public slots:
+
+    void changeActiveOverlay();
 
     void cleanSeedOverlay();
 
@@ -132,6 +153,15 @@ public slots:
     void showMsgBoxClicked()
     {
         QMessageBox::information( mPluginServices->getMainWindow(), "Clicked me!", "You have just clicked me." );
+    }
+
+    void updateOverlay()
+    {
+        if(mouseEventDetected) {
+            mouseEventDetected = false;
+            mPluginServices->setOverlayVisible(activeOverlay, true );
+            mPluginServices->updateDisplay();
+        }
     }
 };
 
