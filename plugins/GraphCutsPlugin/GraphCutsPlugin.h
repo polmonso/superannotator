@@ -35,12 +35,25 @@ private:
     // id of the active overlay
     int activeOverlay;
 
+    int brushSize;
+
+    // max size for limited size graph-cut
+    int maxWidth;
+    int maxHeight;
+    int maxDepth;
+
     bool mouseEventDetected;
+
+    uchar* outputWeightImage;
+    float cache_gaussianVariance;
 
 public:
     GraphCutsPlugin(QObject *parent = 0);
 
     ~GraphCutsPlugin();
+
+    int getActiveOverlay() { return activeOverlay; }
+    int getBrushSize() { return brushSize; }
 
     bool    initializePlugin( const PluginServices &pServices )
     {
@@ -81,8 +94,8 @@ public:
 
         /** Add a menu item **/
         {
-        QAction *action = mPluginServices->getPluginMenu()->addAction( "Change active overlay" );
-        connect( action, SIGNAL(triggered()), this, SLOT(changeActiveOverlay()) );
+        QAction *action = mPluginServices->getPluginMenu()->addAction( "Settings" );
+        connect( action, SIGNAL(triggered()), this, SLOT(changeSettings()) );
         }
 
         /** Add a menu item **/
@@ -99,12 +112,21 @@ public:
         return "GraphCut plugin";
     }
 
+    virtual void mouseReleaseEvent(QMouseEvent *evt, unsigned int imgX, unsigned int imgY, unsigned int imgZ)
+    {
+        mouseEvent(evt, imgX, imgY, imgZ);
+    }
+
     virtual void  mouseMoveEvent( QMouseEvent *evt, unsigned int imgX, unsigned int imgY, unsigned int imgZ )
     {
         if ( (evt->buttons() & Qt::LeftButton) == 0 && (evt->buttons() & Qt::RightButton) == 0)
            return;
 
-        //printf("mouseMoveEvent %x activeOverlay = %d\n", this, activeOverlay);
+        mouseEvent(evt, imgX, imgY, imgZ);
+    }
+
+    virtual void  mouseEvent( QMouseEvent *evt, unsigned int imgX, unsigned int imgY, unsigned int imgZ )
+    {
         Matrix3D<ScoreType> &activeOverlayMatrix = mPluginServices->getOverlayVolumeData(activeOverlay);
 
         if (activeOverlayMatrix.isEmpty())
@@ -114,35 +136,31 @@ public:
         }
 
         if (evt->buttons() & Qt::RightButton) {
-            for(int x = max(0, (int)imgX - 1); x <= min(activeOverlayMatrix.width()-1, imgX + 1); ++x) {
-                for(int y = max(0, (int)imgY - 1); y <= min(activeOverlayMatrix.height()-1, imgY + 1); ++y) {
-                    for(int z = max(0, (int)imgZ - 1); z <= min(activeOverlayMatrix.depth()-1, imgZ + 1); ++z) {
+            for(int x = max(0, (int)imgX - brushSize); x <= min(activeOverlayMatrix.width()-1, imgX + brushSize); ++x) {
+                for(int y = max(0, (int)imgY - brushSize); y <= min(activeOverlayMatrix.height()-1, imgY + brushSize); ++y) {
+                    for(int z = max(0, (int)imgZ - brushSize); z <= min(activeOverlayMatrix.depth()-1, imgZ + brushSize); ++z) {
                         activeOverlayMatrix(x,y,z) = 0;
                     }
                 }
             }
-           // scoreMatrix( imgX, imgY, imgZ ) = 0;
         } else {
             if (evt->modifiers() & Qt::ShiftModifier) {
-                for(int x = max(0, (int)imgX - 1); x <= min(activeOverlayMatrix.width()-1, imgX + 1); ++x) {
-                    for(int y = max(0, (int)imgY - 1); y <= min(activeOverlayMatrix.height()-1, imgY + 1); ++y) {
-                        for(int z = max(0, (int)imgZ - 1); z <= min(activeOverlayMatrix.depth()-1, imgZ + 1); ++z) {
+                for(int x = max(0, (int)imgX - brushSize); x <= min(activeOverlayMatrix.width()-1, imgX + brushSize); ++x) {
+                    for(int y = max(0, (int)imgY - brushSize); y <= min(activeOverlayMatrix.height()-1, imgY + brushSize); ++y) {
+                        for(int z = max(0, (int)imgZ - brushSize); z <= min(activeOverlayMatrix.depth()-1, imgZ + brushSize); ++z) {
                             activeOverlayMatrix(x,y,z) = 128;
                         }
                     }
                 }
-               // scoreMatrix( imgX, imgY, imgZ ) = 128;
             }
             else {
-                for(int x = max(0, (int)imgX - 1); x <= min(activeOverlayMatrix.width()-1, imgX + 1); ++x) {
-                    for(int y = max(0, (int)imgY - 1); y <= min(activeOverlayMatrix.height()-1, imgY + 1); ++y) {
-                        for(int z = max(0, (int)imgZ - 1); z <= min(activeOverlayMatrix.depth()-1, imgZ + 1); ++z) {
+                for(int x = max(0, (int)imgX - brushSize); x <= min(activeOverlayMatrix.width()-1, imgX + brushSize); ++x) {
+                    for(int y = max(0, (int)imgY - brushSize); y <= min(activeOverlayMatrix.height()-1, imgY + brushSize); ++y) {
+                        for(int z = max(0, (int)imgZ - brushSize); z <= min(activeOverlayMatrix.depth()-1, imgZ + brushSize); ++z) {
                             activeOverlayMatrix(x,y,z) = 255;
                         }
                     }
                 }
-
-                //scoreMatrix( imgX, imgY, imgZ ) = 255;
             }
         }
 
@@ -153,7 +171,7 @@ public:
 
 public slots:
 
-    void changeActiveOverlay();
+    void changeSettings();
 
     void cleanSeedOverlay();
 

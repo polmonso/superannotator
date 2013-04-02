@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>ChangeActiveOverlayDialog</class>
- <widget class="QDialog" name="ChangeActiveOverlayDialog">
+ <class>settingsDialog</class>
+ <widget class="QDialog" name="settingsDialog">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -51,13 +51,35 @@
     </item>
    </layout>
   </widget>
+  <widget class="QWidget" name="gridLayoutWidget_2">
+   <property name="geometry">
+    <rect>
+     <x>170</x>
+     <y>150</y>
+     <width>291</width>
+     <height>131</height>
+    </rect>
+   </property>
+   <layout class="QGridLayout" name="gridLayout_2">
+    <item row="0" column="1">
+     <widget class="QSpinBox" name="sbActiveOverlay_2"/>
+    </item>
+    <item row="0" column="0">
+     <widget class="QLabel" name="label_2">
+      <property name="text">
+       <string>Overlay</string>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
  </widget>
  <resources/>
  <connections>
   <connection>
    <sender>buttonBox</sender>
    <signal>accepted()</signal>
-   <receiver>ChangeActiveOverlayDialog</receiver>
+   <receiver>settingsDialog</receiver>
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -73,7 +95,7 @@
   <connection>
    <sender>buttonBox</sender>
    <signal>rejected()</signal>
-   <receiver>ChangeActiveOverlayDialog</receiver>
+   <receiver>settingsDialog</receiver>
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">

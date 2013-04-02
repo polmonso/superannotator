@@ -113,7 +113,8 @@ class GraphCut
     void extractSubCube(TInputPixelType* weights,
                       vector<Point>& sourcePoints,
                       vector<Point>& sinkPoints,
-                      long nx, long ny, long nz);
+                      long nx, long ny, long nz,
+                      int max_width, int max_height, int max_depth);
 
   void getCubeSize(ulong& cubeWidth,
                    ulong& cubeHeight,
@@ -222,12 +223,9 @@ template <typename TInputPixelType>
 void GraphCut::extractSubCube(TInputPixelType* weights,
                               vector<Point>& sourcePoints,
                               vector<Point>& sinkPoints,
-                              long nx, long ny, long nz)
+                              long nx, long ny, long nz,
+                              int max_width, int max_height, int max_depth)
 {
-  const int max_width = 200;
-  const int max_height = 200;
-  const int max_depth = 100;
-
   Point centerSource;
   centerSource.x = 0;
   centerSource.y = 0;

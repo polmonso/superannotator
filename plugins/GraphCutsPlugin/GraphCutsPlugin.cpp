@@ -4,7 +4,7 @@
 
 #include <QInputDialog>
 #include "gcdialog.h"
-#include "changeactiveoverlaydialog.h"
+#include "settingsdialog.h"
 #include <vector>
 #include "utils.h"
 
@@ -31,6 +31,13 @@ GraphCutsPlugin::GraphCutsPlugin(QObject *parent) : PluginBase(parent)
 {
     activeOverlay = 0;
     mouseEventDetected = false;
+    brushSize = 3;
+    maxWidth = 100;
+    maxHeight = 100;
+    maxDepth = 100;
+
+    outputWeightImage = 0;
+    cache_gaussianVariance = -1;
 
     timer = new QTimer;
     timer->setInterval(40);
@@ -40,15 +47,23 @@ GraphCutsPlugin::GraphCutsPlugin(QObject *parent) : PluginBase(parent)
 }
 
 GraphCutsPlugin::~GraphCutsPlugin()
-{
+{    
+    timer->stop();
     delete timer;
+    if(outputWeightImage) {
+        delete[] outputWeightImage;
+    }
 }
 
-void GraphCutsPlugin::changeActiveOverlay()
+void GraphCutsPlugin::changeSettings()
 {
-    ChangeActiveOverlayDialog *window = new ChangeActiveOverlayDialog;
+    settingsDialog *window = new settingsDialog(0, activeOverlay, brushSize, maxWidth, maxHeight, maxDepth);
     window->exec();
     activeOverlay = window->getActiveOverlay();
+    brushSize = window->getBrushSize();
+    maxWidth = window->getMaxWidth();
+    maxHeight = window->getMaxHeight();
+    maxDepth = window->getMaxDepth();
 }
 
 void GraphCutsPlugin::runGraphCuts()
@@ -68,8 +83,6 @@ void GraphCutsPlugin::runGraphCuts()
     window->exec();
     float gaussianVariance = window->getVariance();
     float sigma = window->getEdgeWeight();
-    printf("gaussianVariance %f\n", gaussianVariance);
-    printf("sigma %f\n", sigma);
 
     // generate list of seeds
     Matrix3D<ScoreType> &seedOverlay = mPluginServices->getOverlayVolumeData(idx_seed_overlay);
@@ -107,13 +120,14 @@ void GraphCutsPlugin::runGraphCuts()
     ulong cubeSize = volData.numElem();
 
     // get weight image
-    float* foutputWeightImage = 0;
-    gradientMagnitude<unsigned char, float>(volData.data(), volData.width(), volData.height(), volData.depth(), 1, gaussianVariance, foutputWeightImage);
+    if(outputWeightImage == 0 || cache_gaussianVariance != gaussianVariance) {
+        cache_gaussianVariance = gaussianVariance;
+        float* foutputWeightImage = 0;
+        gradientMagnitude<unsigned char, float>(volData.data(), volData.width(), volData.height(), volData.depth(), 1, gaussianVariance, foutputWeightImage);
 
-    uchar* outputWeightImage = 0;
-    cubeFloat2Uchar(foutputWeightImage,outputWeightImage,volData.width(), volData.height(), volData.depth());
-    //exportTIFCube(outputWeightImage,"outputWeightImage",volData.depth(),volData.height(),volData.width());
-    delete[] foutputWeightImage;
+        cubeFloat2Uchar(foutputWeightImage,outputWeightImage,volData.width(), volData.height(), volData.depth());
+        delete[] foutputWeightImage;
+    }
 
     // copy weight image to overlay
     const int idx_weight_overlay = 2;
@@ -146,9 +160,6 @@ void GraphCutsPlugin::runGraphCuts()
     GraphCut g;
 
     if(!scoreImage.isEmpty() && idx == GC_DEFAULT) {
-        //exportTIFCube(binData.data(),"temp_binCube",volData.depth(),volData.height(),volData.width());
-
-        //LabelImageType::Pointer labelInput = getLabelImage<TInputPixelType,LabelImageType>(inputData,nx,ny,nz);        
         labelInput = getLabelImage<uchar,LabelImageType>(scoreImage.data(),scoreImage.width(),scoreImage.height(),scoreImage.depth(),&nObjects);
 
         // check that seed points belong to the same connected component
@@ -189,10 +200,44 @@ void GraphCutsPlugin::runGraphCuts()
                          sourcePoints,sinkPoints,
                          cGCWeight.width,cGCWeight.height,cGCWeight.depth);
     } else {
+        labelInput = getLabelImage<uchar,LabelImageType>(scoreImage.data(),scoreImage.width(),scoreImage.height(),scoreImage.depth(),&nObjects);
+
+        // check that seed points belong to the same connected component
+        std::vector<Point>::iterator it = sinkPoints.begin();
+        ptrLabelInput = labelInput.GetPointer();
+        LabelImageType::IndexType index;
+        index[0] = it->x; index[1] = it->y; index[2] = it->z;
+        ccId = ptrLabelInput->GetPixel(index);
+        for(; it != sinkPoints.end(); ++it) {
+            index[0] = it->x; index[1] = it->y; index[2] = it->z;
+            int _ccId = ptrLabelInput->GetPixel(index);
+            // _ccId = 0 means background
+            if(_ccId != 0 && ccId != _ccId) {
+                printf("Info: seed points belong to different connected components %d %d.\n", ccId, _ccId);
+                use_histograms = false;
+                ccId = -1;
+                break;
+            }
+        }
+        if(!use_histograms) {
+            for(it = sourcePoints.begin(); it != sourcePoints.end(); ++it) {
+                index[0] = it->x; index[1] = it->y; index[2] = it->z;
+                int _ccId = ptrLabelInput->GetPixel(index);
+                // _ccId = 0 means background
+                if(_ccId != 0 && ccId != _ccId) {
+                    printf("Info: seed points belong to different connected components %d %d.\n", ccId, _ccId);
+                    use_histograms = false;
+                    ccId = -1;
+                    break;
+                }
+            }
+        }
+
         printf("[Main] Extracting sub-cube (fixed size)\n");
         g.extractSubCube(cGCWeight.data,
                          sourcePoints,sinkPoints,
-                         cGCWeight.width,cGCWeight.height,cGCWeight.depth);
+                         cGCWeight.width,cGCWeight.height,cGCWeight.depth,
+                         maxWidth, maxHeight, maxDepth);
     }
 
     if(use_histograms) {
@@ -273,9 +318,6 @@ void GraphCutsPlugin::runGraphCuts()
         g.applyCut(ptrLabelInput, &originalCube, output_data1d, ccId, scoreImage.data());
     }
 
-    //printf("Exporting cube to output_data1d\n");
-    //exportTIFCube(output_data1d,"output_data1d",volData.depth(),volData.height(),volData.width());
-
     // copy output to a new overlay    
     Matrix3D<OverlayType> &ovMatrix = mPluginServices->getOverlayVolumeData(idx_output_overlay);
     ovMatrix.reallocSizeLike(volData);
@@ -290,8 +332,7 @@ void GraphCutsPlugin::runGraphCuts()
     mPluginServices->updateDisplay();
 
     printf("Cleaning\n");
-    delete[] output_data1d;
-    delete[] outputWeightImage;
+    delete[] output_data1d;    
     printf("Done\n");
 }
 

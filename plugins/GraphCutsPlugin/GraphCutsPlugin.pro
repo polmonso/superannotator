@@ -8,14 +8,14 @@ HEADERS += \
     utils.h \
     ../../PluginBase.h \
     gcdialog.h \
-    changeactiveoverlaydialog.h
+    settingsdialog.h
 
 SOURCES += \
     GraphCutsPlugin.cpp \
     graphCut.cpp \
     utils.cpp \
     gcdialog.cpp \
-    changeactiveoverlaydialog.cpp
+    settingsdialog.cpp
 
 # ITK PATH
 include(../../customUserDefs.inc)
@@ -117,10 +117,10 @@ CONFIG(release, debug|release) {
     #DESTDIR = ../../../supervoxel-annotator-build-desktop-Qt_4_8_1_in_PATH__System__Release/plugins
 }
 
-#DESTDIR = /cvlabdata1/home/biomed/EM/segmentation/bin/plugins
+DESTDIR = /cvlabdata1/home/biomed/EM/segmentation/bin/plugins
 
 CONFIG += plugin
 
 FORMS += \
     gcdialog.ui \
-    changeactiveoverlaydialog.ui
+    settingsdialog.ui
