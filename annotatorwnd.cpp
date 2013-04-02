@@ -1433,6 +1433,13 @@ void AnnotatorWnd::labelImageMouseReleaseEvent(QMouseEvent * e)
 {
     QPoint pt = ui->labelImg->screenToImage( e->pos() );
 
+    int x = pt.x();
+    int y = pt.y();
+
+    // call plugin mouse move event
+    for (unsigned i=0; i < mPluginBaseList.size(); i++)
+        mPluginBaseList[i]->mouseReleaseEvent( e, x, y, mCurZSlice );
+
     // select supervoxel for labeling?
     if ( e->button() == Qt::LeftButton )
     {
