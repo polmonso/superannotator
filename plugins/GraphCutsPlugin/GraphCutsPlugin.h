@@ -135,7 +135,7 @@ public:
             activeOverlayMatrix.fill(0);
         }
 
-        if (evt->buttons() & Qt::RightButton) {
+        if (evt->modifiers() & Qt::ControlModifier || evt->buttons() & Qt::RightButton) {
             for(int x = max(0, (int)imgX - brushSize); x <= min(activeOverlayMatrix.width()-1, imgX + brushSize); ++x) {
                 for(int y = max(0, (int)imgY - brushSize); y <= min(activeOverlayMatrix.height()-1, imgY + brushSize); ++y) {
                     for(int z = max(0, (int)imgZ - brushSize); z <= min(activeOverlayMatrix.depth()-1, imgZ + brushSize); ++z) {
