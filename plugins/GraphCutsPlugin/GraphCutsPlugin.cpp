@@ -69,6 +69,7 @@ void GraphCutsPlugin::changeSettings()
 void GraphCutsPlugin::runGraphCuts()
 {
     const int seedRadius = 3;
+    const bool outputOverlays = false;
 
     QAction *action = qobject_cast<QAction *>(sender());
     unsigned int idx = action->data().toUInt();
@@ -129,13 +130,14 @@ void GraphCutsPlugin::runGraphCuts()
         delete[] foutputWeightImage;
     }
 
-    // copy weight image to overlay
-    const int idx_weight_overlay = 2;
-    Matrix3D<OverlayType> &weightMatrix = mPluginServices->getOverlayVolumeData(idx_weight_overlay);
-    weightMatrix.reallocSizeLike(volData);
-    LabelType *dPtr = weightMatrix.data();
-    for(ulong i = 0; i < cubeSize; i++) {
-        dPtr[i] = outputWeightImage[i];
+    if(outputOverlays) {
+        // copy weight image to overlay
+        Matrix3D<OverlayType> &weightMatrix = mPluginServices->getOverlayVolumeData(idx_weight_overlay);
+        weightMatrix.reallocSizeLike(volData);
+        LabelType *dPtr = weightMatrix.data();
+        for(ulong i = 0; i < cubeSize; i++) {
+            dPtr[i] = outputWeightImage[i];
+        }
     }
 
     Cube cGCWeight;
@@ -246,46 +248,47 @@ void GraphCutsPlugin::runGraphCuts()
 
     printf("ccId = %d, use_histograms = %d, unaryType = %d\n", ccId, (int)use_histograms, (int)unaryType);    
 
-    if(ptrLabelInput != 0) {
-        // copy label image to overlay
-        LabelImageType::IndexType index;
-        LabelImageType::PixelType pixel;
+    if(outputOverlays) {
+        if(ptrLabelInput != 0) {
+            // copy label image to overlay
+            LabelImageType::IndexType index;
+            LabelImageType::PixelType pixel;
 
-        if(nObjects < 255) {
-            const int idx_label_overlay = 4;
-            Matrix3D<OverlayType> &labelMatrix = mPluginServices->getOverlayVolumeData(idx_label_overlay);
-            labelMatrix.reallocSizeLike(volData);
-            dPtr = labelMatrix.data();
-            ulong cubeIdx = 0;
-            float objToIndex = 255.0/nObjects;
-            for(ulong z = 0; z < volData.depth(); z++) {
-                for(ulong y = 0; y < volData.height(); y++) {
-                    for(ulong x = 0; x < volData.width(); x++) {
-                        index[0] = x; index[1] = y; index[2] = z;
-                        pixel = ptrLabelInput->GetPixel(index);
-                        dPtr[cubeIdx] = (uchar)pixel*objToIndex;
-                        ++cubeIdx;
+            if(nObjects < 255) {
+                Matrix3D<OverlayType> &labelMatrix = mPluginServices->getOverlayVolumeData(idx_label_overlay);
+                labelMatrix.reallocSizeLike(volData);
+                LabelType * dPtr = labelMatrix.data();
+                ulong cubeIdx = 0;
+                float objToIndex = 255.0/nObjects;
+                for(ulong z = 0; z < volData.depth(); z++) {
+                    for(ulong y = 0; y < volData.height(); y++) {
+                        for(ulong x = 0; x < volData.width(); x++) {
+                            index[0] = x; index[1] = y; index[2] = z;
+                            pixel = ptrLabelInput->GetPixel(index);
+                            dPtr[cubeIdx] = (uchar)pixel*objToIndex;
+                            ++cubeIdx;
+                        }
                     }
                 }
-            }
-            mPluginServices->setOverlayVisible( idx_label_overlay, true );
-        } else {
-            ulong cubeSize = volData.depth()*volData.height()*volData.width()*3;
-            uchar* dPtr = new uchar[cubeSize];
-            ulong cubeIdx = 0;
-            for(ulong z = 0; z < volData.depth(); z++) {
-                for(ulong y = 0; y < volData.height(); y++) {
-                    for(ulong x = 0; x < volData.width(); x++) {
-                        index[0] = x; index[1] = y; index[2] = z;
-                        pixel = ptrLabelInput->GetPixel(index);
-                        dPtr[cubeIdx] = (uchar)pixel&0xff;
-                        dPtr[cubeIdx+1] = (uchar)pixel&0xff00;
-                        dPtr[cubeIdx+2] = (uchar)pixel&0xff0000;
-                        cubeIdx += 3;
+                mPluginServices->setOverlayVisible( idx_label_overlay, true );
+            } else {
+                ulong cubeSize = volData.depth()*volData.height()*volData.width()*3;
+                uchar* dPtr = new uchar[cubeSize];
+                ulong cubeIdx = 0;
+                for(ulong z = 0; z < volData.depth(); z++) {
+                    for(ulong y = 0; y < volData.height(); y++) {
+                        for(ulong x = 0; x < volData.width(); x++) {
+                            index[0] = x; index[1] = y; index[2] = z;
+                            pixel = ptrLabelInput->GetPixel(index);
+                            dPtr[cubeIdx] = (uchar)pixel&0xff;
+                            dPtr[cubeIdx+1] = (uchar)pixel&0xff00;
+                            dPtr[cubeIdx+2] = (uchar)pixel&0xff0000;
+                            cubeIdx += 3;
+                        }
                     }
                 }
+                exportColorTIFCube(dPtr, "cc", volData.depth(), volData.height(), volData.width());
             }
-            //exportColorTIFCube(dPtr, "cc", volData.depth(), volData.height(), volData.width());
         }
     }
 
@@ -303,9 +306,6 @@ void GraphCutsPlugin::runGraphCuts()
     printf("Running max-flow with %ld sources and %ld sinks\n", sourcePoints.size(), sinkPoints.size());
     g.run_maxflow(&cGCWeight, sourcePoints, sinkPoints, sigma, seedRadius, unaryType, &originalCube);
 
-    // debug
-    g.displayCounts();
-
     unsigned char* output_data1d = new uchar[cubeSize];
     if(!use_histograms) {
         memcpy(output_data1d,scoreImage.data(),cubeSize);
@@ -321,7 +321,7 @@ void GraphCutsPlugin::runGraphCuts()
     // copy output to a new overlay    
     Matrix3D<OverlayType> &ovMatrix = mPluginServices->getOverlayVolumeData(idx_output_overlay);
     ovMatrix.reallocSizeLike(volData);
-    dPtr = ovMatrix.data();
+    LabelType *dPtr = ovMatrix.data();
     for(ulong i = 0; i < cubeSize; i++) {
         dPtr[i] = output_data1d[i];
     }

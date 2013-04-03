@@ -15,7 +15,9 @@ using namespace std;
 
 const int idx_seed_overlay = 0;
 const int idx_bindata_overlay = 1;
+const int idx_weight_overlay = 2;
 const int idx_output_overlay = 3;
+const int idx_label_overlay = 4;
 
 enum eGCType
 {
