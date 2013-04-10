@@ -77,17 +77,15 @@ void GraphCut::applyCut(LabelImageType* ptrLabelInput, Cube* inputCube, unsigned
 }
 
 // caller is responsible for freeing memory
-void GraphCut::getOutput(Cube* inputCube, uchar*& output_data)
+void GraphCut::getOutputGivenSeeds(Cube* inputCube, uchar*& output_data)
 {
   ulong inputCube_sliceSize = inputCube->width*inputCube->height;
   ulong cubeSize = inputCube_sliceSize*inputCube->depth;
   ulong cubeIdx = 0;
   for(int k=0;k<nk;k++)
     for(int j = 0;j<nj;j++)
-      for(int i = 0;i<ni;i++,cubeIdx++)
-        {          
+      for(int i = 0;i<ni;i++,cubeIdx++) {
           ulong outputCubeIdx = ((k+subZ)*inputCube_sliceSize) + ((j+subY)*inputCube->width) + (i+subX);
-
           assert(outputCubeIdx < cubeSize);
           if(!inputCube->data || inputCube->at(i+subX,j+subY,k+subZ) != 0) {
             if(m_graph->what_segment(m_node_ids[cubeIdx]) == GraphType::SOURCE) {
@@ -97,6 +95,24 @@ void GraphCut::getOutput(Cube* inputCube, uchar*& output_data)
             }
           }
         }
+}
+
+void GraphCut::getOutput(Cube* inputCube, uchar*& output_data)
+{
+  ulong inputCube_sliceSize = inputCube->width*inputCube->height;
+  ulong cubeSize = inputCube_sliceSize*inputCube->depth;
+  ulong cubeIdx = 0;
+  for(int k=0;k<nk;k++)
+    for(int j = 0;j<nj;j++)
+      for(int i = 0;i<ni;i++,cubeIdx++) {
+          ulong outputCubeIdx = ((k+subZ)*inputCube_sliceSize) + ((j+subY)*inputCube->width) + (i+subX);
+          assert(outputCubeIdx < cubeSize);
+          if(m_graph->what_segment(m_node_ids[cubeIdx]) == GraphType::SOURCE) {
+              output_data[outputCubeIdx] = 128;
+          } else {
+              output_data[outputCubeIdx] = 255;
+          }
+      }
 }
 
 void GraphCut::getCubeSize(ulong& cubeWidth,

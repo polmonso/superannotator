@@ -31,7 +31,9 @@ GraphCutsPlugin::GraphCutsPlugin(QObject *parent) : PluginBase(parent)
 {
     activeOverlay = 0;
     mouseEventDetected = false;
-    brushSize = 3;
+    brushSizeX = 3;
+    brushSizeY = 3;
+    brushSizeZ = 3;
     maxWidth = 100;
     maxHeight = 100;
     maxDepth = 100;
@@ -57,13 +59,17 @@ GraphCutsPlugin::~GraphCutsPlugin()
 
 void GraphCutsPlugin::changeSettings()
 {
-    settingsDialog *window = new settingsDialog(0, activeOverlay, brushSize, maxWidth, maxHeight, maxDepth);
-    window->exec();
-    activeOverlay = window->getActiveOverlay();
-    brushSize = window->getBrushSize();
-    maxWidth = window->getMaxWidth();
-    maxHeight = window->getMaxHeight();
-    maxDepth = window->getMaxDepth();
+    settingsDialog *window = new settingsDialog(0, activeOverlay, brushSizeX, brushSizeY, brushSizeZ, maxWidth, maxHeight, maxDepth);
+    if(window->exec() == QDialog::Accepted) {
+        activeOverlay = window->getActiveOverlay();
+        brushSizeX = window->getBrushSizeX()-1;
+        brushSizeY = window->getBrushSizeY()-1;
+        brushSizeZ = window->getBrushSizeZ()-1;
+        maxWidth = window->getMaxWidth();
+        maxHeight = window->getMaxHeight();
+        maxDepth = window->getMaxDepth();
+    }
+    delete window;
 }
 
 void GraphCutsPlugin::runGraphCuts()
@@ -81,7 +87,10 @@ void GraphCutsPlugin::runGraphCuts()
     }
 
     GCDialog *window = new GCDialog;
-    window->exec();
+    if(window->exec() != QDialog::Accepted) {
+        delete window;
+        return;
+    }
     float gaussianVariance = window->getVariance();
     float sigma = window->getEdgeWeight();
 
@@ -90,18 +99,34 @@ void GraphCutsPlugin::runGraphCuts()
     std::vector<Point> sinkPoints;
     std::vector<Point> sourcePoints;
 
-    for(int x = 0; x < seedOverlay.width(); ++x) {
-        for(int y = 0; y < seedOverlay.height(); ++y) {
-            for(int z = 0; z < seedOverlay.depth(); ++z) {
-                Point p;
-                p.x = x;
-                p.y = y;
-                p.z = z;
-                if(seedOverlay(x,y,z) == 255 && scoreImage(x,y,z) != 0) {
-                    sourcePoints.push_back(p);
-                } else {
-                    if(seedOverlay(x,y,z) == 128 && scoreImage(x,y,z) != 0) {
-                       sinkPoints.push_back(p);
+    if(idx == GC_DATA) {
+        for(int x = 0; x < seedOverlay.width(); ++x) {
+            for(int y = 0; y < seedOverlay.height(); ++y) {
+                for(int z = 0; z < seedOverlay.depth(); ++z) {
+                    Point p(x,y,z);
+                    //p.x = x; p.y = y; p.z = z;
+                    if(seedOverlay(x,y,z) == 255) {
+                        sourcePoints.push_back(p);
+                    } else {
+                        if(seedOverlay(x,y,z) == 128) {
+                           sinkPoints.push_back(p);
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        for(int x = 0; x < seedOverlay.width(); ++x) {
+            for(int y = 0; y < seedOverlay.height(); ++y) {
+                for(int z = 0; z < seedOverlay.depth(); ++z) {
+                    Point p(x,y,z);
+                    //p.x = x; p.y = y; p.z = z;
+                    if(seedOverlay(x,y,z) == 255 && scoreImage(x,y,z) != 0) {
+                        sourcePoints.push_back(p);
+                    } else {
+                        if(seedOverlay(x,y,z) == 128 && scoreImage(x,y,z) != 0) {
+                           sinkPoints.push_back(p);
+                        }
                     }
                 }
             }
@@ -157,6 +182,10 @@ void GraphCutsPlugin::runGraphCuts()
     if(idx == GC_SCORES) {
         unaryType = UNARY_SCORE;
         use_histograms = false;
+    } else {
+        if(idx == GC_DATA) {
+            use_histograms = true;
+        }
     }
 
     GraphCut g;
@@ -312,7 +341,11 @@ void GraphCutsPlugin::runGraphCuts()
     }
 
     printf("Copy output\n");
-    g.getOutput(&originalCube, output_data1d);
+    if(idx == GC_DATA) {
+        g.getOutput(&originalCube, output_data1d);
+    } else {
+        g.getOutputGivenSeeds(&originalCube, output_data1d);
+    }
     if(ccId != -1) {
         printf("Applying cut\n");
         g.applyCut(ptrLabelInput, &originalCube, output_data1d, ccId, scoreImage.data());

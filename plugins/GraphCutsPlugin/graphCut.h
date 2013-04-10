@@ -41,7 +41,11 @@ struct Point
 {
     int x;
     int y;
-    int z;    
+    int z;
+
+    Point() { x = 0; y = 0; z = 0; }
+
+    Point(int _x, int _y, int _z) { x = _x; y = _y; z = _z; }
 };
 
 struct Cube
@@ -121,6 +125,8 @@ class GraphCut
                    ulong& cubeDepth);
 
   void getOutput(Cube* inputCube,uchar*& output_data);
+
+  void getOutputGivenSeeds(Cube* inputCube,uchar*& output_data);
  
   void run_maxflow(Cube* cube,
                    vector<Point>& sourcePoints, vector<Point>& sinkPoints,

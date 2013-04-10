@@ -23,7 +23,8 @@ enum eGCType
 {
     GC_DEFAULT = 0,
     GC_LIMITED,
-    GC_SCORES
+    GC_SCORES,
+    GC_DATA
 };
 
 class GraphCutsPlugin : public PluginBase
@@ -37,7 +38,9 @@ private:
     // id of the active overlay
     int activeOverlay;
 
-    int brushSize;
+    int brushSizeX;
+    int brushSizeY;
+    int brushSizeZ;
 
     // max size for limited size graph-cut
     int maxWidth;
@@ -55,7 +58,9 @@ public:
     ~GraphCutsPlugin();
 
     int getActiveOverlay() { return activeOverlay; }
-    int getBrushSize() { return brushSize; }
+    int getBrushSizeX() { return brushSizeX; }
+    int getBrushSizeY() { return brushSizeY; }
+    int getBrushSizeZ() { return brushSizeZ; }
 
     bool    initializePlugin( const PluginServices &pServices )
     {
@@ -65,6 +70,7 @@ public:
         {
             QAction *action = mPluginServices->getPluginMenu()->addAction( QString("Run") );
             action->setData(GC_DEFAULT);
+            action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_R));
             connect( action, SIGNAL(triggered()), this, SLOT(runGraphCuts()) );
         }
 
@@ -84,26 +90,30 @@ public:
 
         /** Add a menu item **/
         {
-        QAction *action = mPluginServices->getPluginMenu()->addAction( "Clean seed overlay" );
-        connect( action, SIGNAL(triggered()), this, SLOT(cleanSeedOverlay()) );
+            QAction *action = mPluginServices->getPluginMenu()->addAction( QString("Run (data)") );
+            action->setData(GC_DATA);
+            connect( action, SIGNAL(triggered()), this, SLOT(runGraphCuts()) );
         }
 
         /** Add a menu item **/
         {
-        QAction *action = mPluginServices->getPluginMenu()->addAction( "Transfer overlay" );
-        connect( action, SIGNAL(triggered()), this, SLOT(transferOverlay()) );
+            QAction *action = mPluginServices->getPluginMenu()->addAction( "Clean seed overlay" );
+            action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_C));
+            connect( action, SIGNAL(triggered()), this, SLOT(cleanSeedOverlay()) );
         }
 
         /** Add a menu item **/
         {
-        QAction *action = mPluginServices->getPluginMenu()->addAction( "Settings" );
-        connect( action, SIGNAL(triggered()), this, SLOT(changeSettings()) );
+            QAction *action = mPluginServices->getPluginMenu()->addAction( "Transfer overlay" );
+            action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_T));
+            connect( action, SIGNAL(triggered()), this, SLOT(transferOverlay()) );
         }
 
         /** Add a menu item **/
         {
-        QAction *action = mPluginServices->getPluginMenu()->addAction( "Show message box" );
-        connect( action, SIGNAL(triggered()), this, SLOT(showMsgBoxClicked()) );
+            QAction *action = mPluginServices->getPluginMenu()->addAction( "Settings" );
+            action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_I));
+            connect( action, SIGNAL(triggered()), this, SLOT(changeSettings()) );
         }
 
         return true;
@@ -138,27 +148,27 @@ public:
         }
 
         if (evt->modifiers() & Qt::ControlModifier || evt->buttons() & Qt::RightButton) {
-            for(int x = max(0, (int)imgX - brushSize); x <= min(activeOverlayMatrix.width()-1, imgX + brushSize); ++x) {
-                for(int y = max(0, (int)imgY - brushSize); y <= min(activeOverlayMatrix.height()-1, imgY + brushSize); ++y) {
-                    for(int z = max(0, (int)imgZ - brushSize); z <= min(activeOverlayMatrix.depth()-1, imgZ + brushSize); ++z) {
+            for(int x = max(0, (int)imgX - brushSizeX); x <= min(activeOverlayMatrix.width()-1, imgX + brushSizeX); ++x) {
+                for(int y = max(0, (int)imgY - brushSizeY); y <= min(activeOverlayMatrix.height()-1, imgY + brushSizeY); ++y) {
+                    for(int z = max(0, (int)imgZ - brushSizeZ); z <= min(activeOverlayMatrix.depth()-1, imgZ + brushSizeZ); ++z) {
                         activeOverlayMatrix(x,y,z) = 0;
                     }
                 }
             }
         } else {
             if (evt->modifiers() & Qt::ShiftModifier) {
-                for(int x = max(0, (int)imgX - brushSize); x <= min(activeOverlayMatrix.width()-1, imgX + brushSize); ++x) {
-                    for(int y = max(0, (int)imgY - brushSize); y <= min(activeOverlayMatrix.height()-1, imgY + brushSize); ++y) {
-                        for(int z = max(0, (int)imgZ - brushSize); z <= min(activeOverlayMatrix.depth()-1, imgZ + brushSize); ++z) {
+                for(int x = max(0, (int)imgX - brushSizeX); x <= min(activeOverlayMatrix.width()-1, imgX + brushSizeX); ++x) {
+                    for(int y = max(0, (int)imgY - brushSizeY); y <= min(activeOverlayMatrix.height()-1, imgY + brushSizeY); ++y) {
+                        for(int z = max(0, (int)imgZ - brushSizeZ); z <= min(activeOverlayMatrix.depth()-1, imgZ + brushSizeZ); ++z) {
                             activeOverlayMatrix(x,y,z) = 128;
                         }
                     }
                 }
             }
             else {
-                for(int x = max(0, (int)imgX - brushSize); x <= min(activeOverlayMatrix.width()-1, imgX + brushSize); ++x) {
-                    for(int y = max(0, (int)imgY - brushSize); y <= min(activeOverlayMatrix.height()-1, imgY + brushSize); ++y) {
-                        for(int z = max(0, (int)imgZ - brushSize); z <= min(activeOverlayMatrix.depth()-1, imgZ + brushSize); ++z) {
+                for(int x = max(0, (int)imgX - brushSizeX); x <= min(activeOverlayMatrix.width()-1, imgX + brushSizeX); ++x) {
+                    for(int y = max(0, (int)imgY - brushSizeY); y <= min(activeOverlayMatrix.height()-1, imgY + brushSizeY); ++y) {
+                        for(int z = max(0, (int)imgZ - brushSizeZ); z <= min(activeOverlayMatrix.depth()-1, imgZ + brushSizeZ); ++z) {
                             activeOverlayMatrix(x,y,z) = 255;
                         }
                     }
