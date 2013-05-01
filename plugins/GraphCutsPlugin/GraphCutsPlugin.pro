@@ -1,6 +1,7 @@
 TEMPLATE = lib
 INCLUDEPATH += ../../
 INCLUDEPATH += /home/lucchi/src/EM/superpixels/lib/graphCuts/
+INCLUDEPATH += ../dependencies/graphCuts
 
 HEADERS += \
     GraphCutsPlugin.h \
@@ -108,16 +109,17 @@ INCLUDEPATH += $$ITKPATH_BUILD/
 LIBS += -L$$ITKPATH_BUILD/bin -lITKIO -lITKStatistics -lITKNrrdIO -litkgdcm -litkjpeg12 -litkjpeg16 -litkopenjpeg -litkpng -litktiff -litkjpeg8 -lITKSpatialObject -lITKMetaIO -lITKDICOMParser -lITKEXPAT -lITKniftiio -lITKznz -litkzlib -lITKCommon -litksys -litkvnl_inst -litkvnl_algo -litkvnl -litkvcl -litkv3p_lsqr -lpthread -lm -ldl -litkNetlibSlatec -litkv3p_netlib
 LIBS += -luuid
 
-CONFIG(debug, debug|release) {
-    DESTDIR = ../../../supervoxel-annotator-build-desktop/plugins
-    #DESTDIR = ../../../supervoxel-annotator-build-desktop-Qt_4_8_1_in_PATH__System__Debug/plugins
-}
-CONFIG(release, debug|release) {
-    DESTDIR = ../../../supervoxel-annotator-build-desktop/plugins
-    #DESTDIR = ../../../supervoxel-annotator-build-desktop-Qt_4_8_1_in_PATH__System__Release/plugins
-}
+#CONFIG(debug, debug|release) {
+#    DESTDIR = ../../../supervoxel-annotator-build-desktop/plugins
+#    #DESTDIR = ../../../supervoxel-annotator-build-desktop-Qt_4_8_1_in_PATH__System__Debug/plugins
+#}
+#CONFIG(release, debug|release) {
+#    DESTDIR = ../../../supervoxel-annotator-build-desktop/plugins
+#    #DESTDIR = ../../../supervoxel-annotator-build-desktop-Qt_4_8_1_in_PATH__System__Release/plugins
+#}
 
-DESTDIR = /cvlabdata1/home/biomed/EM/segmentation/bin/plugins
+#DESTDIR = /cvlabdata1/home/biomed/EM/segmentation/bin/plugins
+DESTDIR = $$DESTDIR/plugins
 
 CONFIG += plugin
 
