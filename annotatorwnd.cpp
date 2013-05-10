@@ -1146,17 +1146,10 @@ void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )
         statusBarMsg( curMsg + QString("Region count: %1").arg(lblCount), 2000 );
 
         //TODO autolabel each region
-<<<<<<< HEAD
         //if(ui->autoLabel->isChecked()){
             //foreach region do asdf
             //labelRegion( regionidx, labelidx*255/lblCount );
         //}
-=======
-        if(ui->autoLabel->isChecked()){
-            //foreach region do asdf
-            //labelRegion( regionidx, labelidx*255/lblCount );
-        }
->>>>>>> 82932d83bf47a7d23c53276594aba1d49e28c761
     }
 }
 
