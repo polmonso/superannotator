@@ -68,7 +68,7 @@ include(customUserDefs.inc)
 ITKPATH_BUILD = $$ITKPATH/build
 
 # Replace to point to SLIC path
-SLICPATH = $$_PRO_FILE_PWD_/../slic
+SLICPATH = $$_PRO_FILE_PWD_/third-party/slic
 
 INCLUDEPATH += $$SLICPATH/../
 
