@@ -39,6 +39,21 @@ void PreferencesDialog::setMaxVoxelsForSV( unsigned val )
     ui->spinMaxVox->setValue( val / 1000000U );
 }
 
+unsigned PreferencesDialog::getSliceJump() const
+{
+    return ((unsigned int)ui->spinSliceJump->value());
+}
+
+void PreferencesDialog::setSliceJump( unsigned val )
+{
+    ui->spinMaxVox->setValue( val );
+}
+
+void PreferencesDialog::on_spinSliceJump_valueChanged(int val)
+{
+    setSliceJump((unsigned)val);
+}
+
 void PreferencesDialog::browseFijiPathClicked()
 {
     QString fName = QFileDialog::getOpenFileName( this, "Browse for Fiji executable" );

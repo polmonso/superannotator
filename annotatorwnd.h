@@ -8,6 +8,12 @@
 #include "Region3D.h"
 #include "CommonTypes.h"
 
+#include <QFileInfo>
+#include "brush.h"
+
+#include "overlay.h"
+
+
 namespace Ui {
     class AnnotatorWnd;
 }
@@ -28,14 +34,17 @@ private:
 
     struct {
         QString savePath;
+        QString saveFilePath;
         QString loadPath;   // these are for annotation
 
         QString savePathScores; // for score volume
+        QFileInfo saveFileInfoScores; // for annotation volume
         QString loadPathScores; // for score volume
         QString loadPathVolume; // for main volume
         QString fijiExePath;
 
         unsigned maxVoxForSVox;
+        unsigned sliceJump;
     } mSettingsData;
 
     void loadSettings();
@@ -53,6 +62,8 @@ protected:
 private:
     Ui::AnnotatorWnd *ui;
     int mCurZSlice;
+    int mCurX;
+    int mCurY;
     // if label file shoul be saved on exit, and which would be the path
     bool        mSaveLabelsOnExit;
     QString     mSaveLabelsOnExitPath;
@@ -79,12 +90,12 @@ private:
     Matrix3D<ScoreType> mScoreImage;
     bool                mScoreImageEnabled;
 
-
+    CubeBrush cubeBrush;
+    SphereBrush sphereBrush;
 
     void updateCursorPixelInfo( int x, int y, int z );   // shows current pixel position
 
     bool   mOverlayLabelImage;    // if true, then an overlay is drawn on top of the image, showing color-coded pixel labels
-    double mOverlayLabelImageTransparency;  // btw 0 and 1, transparency of labels
 
     void annotateSupervoxel( const SupervoxelSelection &SV, LabelType label, bool onlyCurrentSlice = false );
 
@@ -95,6 +106,8 @@ private:
     void runConnectivityCheck( const Region3D &reg );
 
 public:
+
+    std::vector< Overlay * >  mOverlayInfo;
 
     // called by the plugin to update the display
     void pluginUpdateDisplay();
@@ -133,7 +146,7 @@ public slots:
     void updateImageSlice();    //updates the label widget with mCurZSlice slice
     void updateImageSlice(int);    //same as above, discards parameter int
 
-    void                    showPreferencesDialog();
+    void showPreferencesDialog();
 
     // called whenever the user has modified a single label supervoxel
     void userModifiedSupervoxelLabel();
@@ -174,11 +187,22 @@ public slots:
 
     // called when an image wants to be loaded in an overlay layer
     void overlayLoadTriggered();
+    void overlayReloadTriggered();
+    void selectPaintingLabel();
+    void selectOverlay();
+    void selectedOverlayChanged(int idx);
     void overlayChooseColorTriggered();
 
+    void overlaySaveAsTriggered();
     void overlaySaveTriggered();
+    void overlaySave(Matrix3D<OverlayType> *overlay, QString filePath);
 
     void overlayRescaleTriggered();
+
+    void on_cubeBrushSizeX_valueChanged(int width);
+    void on_cubeBrushSizeY_valueChanged(int height);
+    void on_cubeBrushSizeZ_valueChanged(int depth);
+
 };
 
 #endif // ANNOTATORWND_H

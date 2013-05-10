@@ -86,6 +86,10 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
     connect( ui->spinPixMin, SIGNAL(valueChanged(int)), this, SLOT(constraintsChangedCallback(int)) );
     connect( mConstraintsDisplayTimer, SIGNAL(timeout()), this, SLOT(constraintsTimerCallback()) );
 
+    connect( ui->cubeBrushSizeX, SIGNAL(valueChanged(int)), this, SLOT(on_cubeBrushSizeX_valueChanged(int)) );
+    connect( ui->cubeBrushSizeY, SIGNAL(valueChanged(int)), this, SLOT(on_cubeBrushSizeY_valueChanged(int)) );
+    connect( ui->cubeBrushSizeZ, SIGNAL(valueChanged(int)), this, SLOT(on_cubeBrushSizeZ_valueChanged(int)) );
+
     // settings
     m_sSettingsFile = QApplication::applicationDirPath() + "/settings.ini";
     qDebug() << m_sSettingsFile;
@@ -159,6 +163,9 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
             mCurZSlice = z;
     }
 
+    //Brushes
+    cubeBrush.setSize(ui->cubeBrushSizeX->value(),ui->cubeBrushSizeY->value(),ui->cubeBrushSizeZ->value());
+    sphereBrush.setSize(ui->cubeBrushSizeX->value(),ui->cubeBrushSizeY->value(),ui->cubeBrushSizeZ->value());
 
     //mVolumeData.load( "/data/phd/synapses/Rat/layer2_3stak_red_reg_z1.5_example_cropped.tif" );
     //mVolumeData.load( "/data/phd/synapses/Rat/layer2_3stak_red_reg_z1.5_firstquarter.tif" );
@@ -173,7 +180,6 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
     ui->zSlider->setPageStep(10);
     ui->zSlider->setValue( mCurZSlice );
 
-
     updateImageSlice();
 
     // events
@@ -183,7 +189,6 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
     connect(ui->labelImg,SIGNAL(mouseReleaseEventSignal(QMouseEvent*)),this,SLOT(labelImageMouseReleaseEvent(QMouseEvent*)));
 
     ui->labelImg->setMouseTracking(true);
-
 
     connect(ui->zSlider,SIGNAL(sliderMoved(int)),this,SLOT(zSliderMoved(int)));
     connect(ui->zSlider,SIGNAL(valueChanged(int)),this,SLOT(zSliderMoved(int)));
@@ -227,11 +232,13 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     connect( ui->actionHide_volume, SIGNAL(changed()), this, SLOT(updateImageSlice()) );
 
-
     ui->chkLabelOverlay->setChecked(true);
+
+    connect( ui->layersDisplay, SIGNAL(currentRowChanged(int)), this, SLOT(selectOverlayChanged()));
 
     mOverlayLabelImage = ui->chkLabelOverlay->checkState() == Qt::Checked;
 
+    //Label combobox
     fillLabelComboBox(3);
 
     dialOverlayTransparencyMoved( 0 );
@@ -241,24 +248,42 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
     {
         ui->menuView->addSeparator();
 
+        //Save active overlay
+        QAction *save = ui->menuView->addAction("Save active overlay");
+        //TODO check if that's the proper way to assign the key
+        save->setShortcut( QKeySequence( QString("S") ) );
+        connect( save, SIGNAL(triggered()), this, SLOT(overlaySaveTriggered()) );
+
+        //Reload active overlay
+        QAction *reload = ui->menuView->addAction("Reload active overlay");
+        reload->setShortcut( QKeySequence( QString("R") ) );
+        connect( reload, SIGNAL(triggered()), this, SLOT(overlayReloadTriggered()) );
+
         // create objects + add overlay visibility menus/shortcuts
         for (int i=0; i < (int)PluginServices::getMaxOverlayVolumes(); i++ )
         {
             mOverlayVolumeList.push_back( new Matrix3D<OverlayType>() );
 
+            mOverlayInfo.push_back( new Overlay() );
+
             QString name = QString("Overlay %1").arg(i+1);
+            ui->layersDisplay->addItem(name);
 
             // add group for each one
             QMenu *subMenu = ui->menuView->addMenu( mOverlayColorList.getIcon(i), name );
             mOverlayMenus.push_back(subMenu);
 
             // enable check box
+            QAction *selectOverlay = subMenu->addAction( "Select " + name );
+            selectOverlay->setShortcut( QKeySequence( QString("Ctrl+%1").arg(i+1) ) );
+            selectOverlay->setData( i ); // use data as index
+            connect( selectOverlay, SIGNAL(triggered()), this, SLOT(selectOverlay()) );
+
             QAction *a = subMenu->addAction( "Enable " + name );
             a->setCheckable(true);
             a->setChecked(false);
             a->setEnabled(false);
-            a->setShortcut( QKeySequence( QString("%1").arg(i+1) ) );
-
+            //a->setShortcut( QKeySequence( QString("%1").arg(i+1) ) );
             connect( a, SIGNAL(triggered()), this, SLOT(updateImageSlice()) );
 
             mOverlayMenuActions.push_back( a );
@@ -286,16 +311,28 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
             connect( load, SIGNAL(triggered()), this, SLOT(overlayLoadTriggered()) );
 
             // and a save button too
-            QAction *save = subMenu->addAction("Save to file...");
-            save->setCheckable(false);
-            save->setEnabled(true);
-            save->setData( i ); // use data as index
+            QAction *saveAs = subMenu->addAction("Save to file...");
+            saveAs->setCheckable(false);
+            saveAs->setEnabled(true);
+            saveAs->setData( i ); // use data as index
 
-            connect( save, SIGNAL(triggered()), this, SLOT(overlaySaveTriggered()) );
+            connect( saveAs, SIGNAL(triggered()), this, SLOT(overlaySaveAsTriggered()) );
         }
+
     }
 
+    //TODO this default transparency is hardcoded
+    mOverlayInfo[0]->alpha = 0.80;
+    mOverlayInfo[1]->alpha = 0.10;
+
+    //TODO assuming there will always be at least one overlay
+    ui->layersDisplay->setCurrentRow(0);
+
     scanPlugins( qApp->applicationDirPath() + "/plugins/" );
+
+    //TODO allow them to be unhidden
+    ui->groupBoxRestrictPixLabels->hide();
+    ui->groupBoxSupervoxels->hide();
 
     this->showMaximized();
 }
@@ -312,6 +349,7 @@ void AnnotatorWnd::showPreferencesDialog()
 
     mSettingsData.fijiExePath = dialog.getFijiExePath();
     mSettingsData.maxVoxForSVox = dialog.getMaxVoxelsForSV();
+    mSettingsData.sliceJump = dialog.getSliceJump();
 
     this->saveSettings();
 }
@@ -329,6 +367,35 @@ void AnnotatorWnd::overlayChooseColorTriggered()
 
     mOverlayMenus.at(idx)->setIcon( mOverlayColorList.getIcon(idx) );
     updateImageSlice();
+}
+
+void AnnotatorWnd::selectPaintingLabel()
+{
+    QAction *action = qobject_cast<QAction *>(sender());
+    int idx = action->data().toInt();
+
+    ui->comboLabel->setCurrentIndex(idx);
+}
+
+void AnnotatorWnd::selectOverlay()
+{
+    QAction *action = qobject_cast<QAction *>(sender());
+    int idx = action->data().toInt();
+
+    selectedOverlayChanged(idx);
+
+}
+
+void AnnotatorWnd::selectedOverlayChanged(int idx)
+{
+    int debugRow = ui->layersDisplay->currentRow();
+    if(ui->layersDisplay->currentRow() != idx)
+        ui->layersDisplay->setCurrentRow(idx);
+    else
+        setOverlayVisible(idx,!mOverlayMenuActions[idx]->isEnabled());
+
+    ui->dialLabelOverlayTransp->setValue(mOverlayInfo[idx]->alpha*100);
+
 }
 
 void AnnotatorWnd::overlayLoadTriggered()
@@ -368,35 +435,139 @@ void AnnotatorWnd::overlayLoadTriggered()
     statusBarMsg("Overlay image loaded successfully.");
 
     mSettingsData.loadPathScores = QFileInfo(fileName).absolutePath();
+    mSettingsData.saveFileInfoScores = QFileInfo(fileName);
     this->saveSettings();
 }
 
-void AnnotatorWnd::overlaySaveTriggered()
+void AnnotatorWnd::overlayReloadTriggered()
+{
+
+    int idx = ui->layersDisplay->currentIndex().row();
+    if(!mSettingsData.saveFileInfoScores.exists()){
+        QMessageBox::critical(this, "Cannot open file", QString("FileInfo is not set"));
+        return;
+    }
+
+    //TODO move this to another function called by both triggers
+    //TODO handle errors correctly of empty saveFileInfos here
+    QString fileName(mSettingsData.saveFileInfoScores.absolutePath() + "/"
+                   + mSettingsData.saveFileInfoScores.baseName() + "."
+                   + mSettingsData.saveFileInfoScores.completeSuffix());
+
+    std::string stdFName = fileName.toLocal8Bit().constData();
+
+    if (!mOverlayVolumeList[idx]->load( stdFName )){
+        QMessageBox::critical(this, "Cannot open file", QString("%1 could not be read.").arg(fileName));
+        return;
+    }
+
+    if ( !mOverlayVolumeList[idx]->isSizeLike( mVolumeData ) )
+    {
+        QMessageBox::critical(this, "Dimensions do not match", "Image does not match original volume dimensions. Disabling this overlay.");
+
+        mOverlayMenuActions[idx]->setChecked(false);
+        mOverlayMenuActions[idx]->setEnabled(false);
+
+        updateImageSlice();
+        return;
+    }
+
+    // enable and show ;)
+    mOverlayMenuActions[idx]->setChecked(true);
+    mOverlayMenuActions[idx]->setEnabled(true);
+
+    updateImageSlice();
+    statusBarMsg("Overlay image loaded successfully.");
+
+    mSettingsData.loadPathScores = QFileInfo(fileName).absolutePath();
+    mSettingsData.saveFileInfoScores = QFileInfo(fileName);
+    this->saveSettings();
+
+}
+
+void AnnotatorWnd::overlaySaveAsTriggered()
 {
     QAction *action = qobject_cast<QAction *>(sender());
     int idx = action->data().toInt();
 
     QString fileName = QFileDialog::getSaveFileName( this, "Save overlay image", mSettingsData.savePathScores, mFileTypeFilter );
 
-    if (fileName.isEmpty())
+    if (fileName.isEmpty()){
+        //TODO say something!
+        qDebug() << "FileName is empty";
         return;
+    }
 
     if (!fileName.endsWith(".tif"))
         fileName += ".tif";
 
     qDebug() << fileName;
 
-    std::string stdFName = fileName.toLocal8Bit().constData();
+    overlaySave(mOverlayVolumeList[idx],fileName);
 
-    if (!mOverlayVolumeList[idx]->save( stdFName )) {
-        statusBarMsg(QString("Error saving ") + fileName, 0 );
+    mSettingsData.savePathScores = QFileInfo(fileName).absolutePath();
+    mSettingsData.saveFileInfoScores = QFileInfo(fileName);
+    this->saveSettings();
+}
+
+void AnnotatorWnd::overlaySaveTriggered()
+{
+
+    //TODO is saving the selected layer ok?
+    int idx = ui->layersDisplay->currentIndex().row();
+    if(idx < 0 || idx > ui->layersDisplay->count()){
+        qDebug() << " unselected layer";
+        QMessageBox::critical(this, "Cannot open file", QString("Select a layer first"));
+        return;
+    }
+
+    Matrix3D<OverlayType> *overlay = mOverlayVolumeList.at(idx);
+    if(overlay == NULL || overlay->isEmpty()){
+        qDebug() << " overlay empty";
+        QMessageBox::critical(this, "Cannot open file", QString("Overlay is empty"));
+        return;
+    }
+
+    if(!mSettingsData.saveFileInfoScores.exists()){
+        qDebug() << "FileInfo does not exist";
+        //TODO put this somewhere else
+        QString fileName = QFileDialog::getSaveFileName( this, "Save overlay image", mSettingsData.savePathScores, mFileTypeFilter );
+
+        if (fileName.isEmpty()){
+            qDebug() << "FileName is empty";
+            return;
+        }
+
+        if (!fileName.endsWith(".tif"))
+            fileName += ".tif";
+
+        qDebug() << fileName;
+
+        overlaySave(mOverlayVolumeList[idx],fileName);
+
+        mSettingsData.savePathScores = QFileInfo(fileName).absolutePath();
+        mSettingsData.saveFileInfoScores = QFileInfo(fileName);
+        this->saveSettings();
+        return;
+    }
+
+    overlaySave(overlay, mSettingsData.saveFileInfoScores.absolutePath() + "/"
+              + mSettingsData.saveFileInfoScores.baseName() + "."
+              + mSettingsData.saveFileInfoScores.completeSuffix());
+}
+
+void AnnotatorWnd::overlaySave(Matrix3D<OverlayType> *overlay, QString filePath)
+{
+
+    std::string stdFName = filePath.toLocal8Bit().constData();
+
+    if (!overlay->save( stdFName )) {
+        statusBarMsg(QString("Error saving ") + filePath, 0 );
         return;
     }
     else
         statusBarMsg("Annotation saved successfully.");
 
-    mSettingsData.savePathScores = QFileInfo(fileName).absolutePath();
-    this->saveSettings();
 }
 
 void AnnotatorWnd::overlayRescaleTriggered()
@@ -526,6 +697,8 @@ void AnnotatorWnd::saveSettings()
     settings.setValue( "spinSVZ", ui->spinSVZ->value() );
     settings.setValue( "fijiExePath", mSettingsData.fijiExePath );
     settings.setValue( "maxVoxForSVox", mSettingsData.maxVoxForSVox );
+    settings.setValue( "sliceJump", mSettingsData.sliceJump );
+
 
     qDebug() << m_sSettingsFile;
 }
@@ -604,7 +777,12 @@ bool AnnotatorWnd::saveAnnotation(const QString& fileName_)
 
 void AnnotatorWnd::actionSaveAnnotTriggered()
 {
-    QString fileName = QFileDialog::getSaveFileName( this, "Save annotation", mSettingsData.savePath, mFileTypeFilter );
+    QString fileName;
+
+    if(mSettingsData.saveFilePath.isEmpty())
+        fileName = QFileDialog::getSaveFileName( this, "Save annotation", mSettingsData.savePath, mFileTypeFilter );
+    else
+        fileName = mSettingsData.saveFilePath;
 
     if (fileName.isEmpty())
         return;
@@ -613,10 +791,11 @@ void AnnotatorWnd::actionSaveAnnotTriggered()
         return;
 
     mSettingsData.savePath = QFileInfo(fileName).absolutePath();
+    mSettingsData.saveFilePath = QFileInfo(fileName).absoluteFilePath();
     this->saveSettings();
 }
 
-bool AnnotatorWnd::loadAnnotation(const QString& fileName, int importAsLabel, LabelType threshold)
+bool AnnotatorWnd:: loadAnnotation(const QString& fileName, int importAsLabel, LabelType threshold)
 {
     qDebug() << fileName;
 
@@ -700,6 +879,7 @@ void AnnotatorWnd::actionLoadAnnotTriggered()
         return;
 
     mSettingsData.loadPath = QFileInfo(fileName).absolutePath();
+
     this->saveSettings();
 }
 
@@ -746,6 +926,7 @@ public:
 
          QMetaObject::invokeMethod( mParent, "statusBarMsg", Qt::QueuedConnection, Q_ARG( QString, QString("Done: %1 supervoxels generated.").arg( mSVox.numLabels() ) ) );
      }
+
 };
 
 void AnnotatorWnd::loadSuperVoxelWholeVolumeClicked()
@@ -903,8 +1084,14 @@ void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )
         Matrix3D<LabelType> croppedImg;
         if ( !ui->chkConnectivityScoreImg->isChecked() )    // score image or label image?
             reg.useToCrop( mVolumeLabels, &croppedImg );
-        else
-            reg.useToCrop( mScoreImage, &croppedImg );
+        else{
+            if(mOverlayVolumeList[ui->layersDisplay->currentRow()]->isSizeLike(mVolumeLabels))
+                reg.useToCrop( *mOverlayVolumeList[ui->layersDisplay->currentRow()], &croppedImg );
+            else{
+                qDebug() << "Selected layer does not match volume size. Aborting.";
+                return;
+            }
+        }
 
         // now only keep the label set in the combo box in the case of label image
         const LabelType lbl = ui->comboLabel->currentIndex();
@@ -957,7 +1144,25 @@ void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )
             curMsg += " | ";
 
         statusBarMsg( curMsg + QString("Region count: %1").arg(lblCount), 2000 );
+
+        //TODO autolabel each region
+        if(ui->autoLabel->isChecked()){
+            foreach region do asdf
+            labelRegion( regionidx, labelidx*255/lblCount );
+        }
     }
+}
+
+void AnnotatorWnd::labelRegion(uint regionIdx, uint labelId)
+{
+    //TODO how are regions stored?
+    //unsigned int pixLabelIdx = mLabelListData.shapeInfo[regionIdx].labelIdx();
+    //mLabelListData.region3D.croppedToWholePixList( mVolumeLabels, mLabelListData.labelToPixelMap.at( pixLabelIdx - 1 ), mSelectedSV.pixelList );
+
+    qDebug() << "Implement me!";
+
+
+    updateImageSlice();
 }
 
 void AnnotatorWnd::regionListFrameLabelRegion(uint regionIdx, uint labelId)
@@ -1147,16 +1352,33 @@ void AnnotatorWnd::fillLabelComboBox( int numLabels )
 
     // first none class
     ui->comboLabel->addItem("Unlabeled");
+    QAction *unlabel = ui->menuView->addAction("Use unlabel");
+    unlabel->setData( 0 ); // use data as index
+    unlabel->setShortcut(QKeySequence( QString("0") ) );
+    connect( unlabel, SIGNAL(triggered()), this, SLOT(selectPaintingLabel()) );
 
-    for (int i=0; i < mLblColorList.count(); i++)
+    for (int i=0; i < mLblColorList.count(); i++){
         ui->comboLabel->addItem( mLblColorList.getIcon(i), QString("Class %1").arg(i+1) );
+        //TODO process keystrokes differently
+        QString name = QString("label %1").arg(i+1);
+        QAction *label = ui->menuView->addAction("Use " + name);
+
+        label->setShortcut( QKeySequence( QString("%1").arg(i+1) ) );
+        label->setData( i+1 ); // use data as index
+        connect( label, SIGNAL(triggered()), this, SLOT(selectPaintingLabel()) );
+    }
+    //TODO maybe with something like QList<QKeySequence> shortcuts;
 
     ui->comboLabel->setCurrentIndex(1);
 }
 
-void AnnotatorWnd::dialOverlayTransparencyMoved( int )
+void AnnotatorWnd::dialOverlayTransparencyMoved( int value )
 {
-    mOverlayLabelImageTransparency = ui->dialLabelOverlayTransp->value() * 1.0 / 100;
+
+    int debugRow = ui->layersDisplay->currentRow();
+    if(ui->layersDisplay->currentRow() >= 0 )
+        mOverlayInfo[ui->layersDisplay->currentRow()]->alpha = value * 1.0 / 100;
+
     updateImageSlice();
 }
 
@@ -1277,6 +1499,21 @@ void AnnotatorWnd::constraintsTimerCallback() // timer callback
     updateImageSlice();
 }
 
+void AnnotatorWnd::on_cubeBrushSizeX_valueChanged(int width){
+    cubeBrush.width = width;
+    sphereBrush.width = width;
+}
+
+void AnnotatorWnd::on_cubeBrushSizeY_valueChanged(int height){
+    cubeBrush.height = height;
+    sphereBrush.height = height;
+}
+
+void AnnotatorWnd::on_cubeBrushSizeZ_valueChanged(int depth){
+    cubeBrush.depth = depth;
+    sphereBrush.depth = depth;
+}
+
 void AnnotatorWnd::updateImageSlice()
 {
     QImage qimg;
@@ -1320,21 +1557,28 @@ void AnnotatorWnd::updateImageSlice()
     }
 
     // user-overlays
-    for (unsigned int i=0; i < mOverlayMenuActions.size(); i++)
+    for (unsigned int overlayIdx=0; overlayIdx < mOverlayMenuActions.size(); overlayIdx++)
     {
-        if ( !mOverlayVolumeList[i]->isSizeLike( mVolumeData ) )
+        if ( !mOverlayVolumeList[overlayIdx]->isSizeLike( mVolumeData ) )
             continue;
-        if ( !mOverlayMenuActions[i]->isChecked() )
+        if ( !mOverlayMenuActions[overlayIdx]->isChecked() )
             continue;
 
-        const OverlayType *scorePtr = mOverlayVolumeList[i]->sliceData( mCurZSlice );
+        //int floatTransp = 256 * mOverlayInfo[overlayIdx]->alpha;
+        //int floatTranspInv = 256 - floatTransp;
+        const OverlayType *scorePtr = mOverlayVolumeList[overlayIdx]->sliceData( mCurZSlice );
         unsigned int *pixPtr = (unsigned int *) qimg.constBits(); // trick!
         unsigned int sz = mVolumeLabels.width() * mVolumeLabels.height();
 
-        overlayRGB( pixPtr, scorePtr, pixPtr, sz, mOverlayColorList.getColor(i) );
+
+        const QColor &color = mOverlayColorList.getColor(overlayIdx);
+
+        overlayRGB( pixPtr, scorePtr, pixPtr, sz, color, mOverlayInfo[overlayIdx]->alpha );
+
     }
 
     // check ground truth slice and draw it
+    /*
     if (mOverlayLabelImage)
     {
         //int intTransp = 255*mOverlayLabelImageTransparency;
@@ -1370,6 +1614,7 @@ void AnnotatorWnd::updateImageSlice()
             pixPtr[i] = c.rgb();
         }
     }
+    */
 
     if (mSelectedSV.valid)  //if selection is valid, draw highlight
     {
@@ -1396,8 +1641,16 @@ void AnnotatorWnd::updateImageSlice()
             qreal b = pixColor.blueF() * invOpacity + cBl;
 
             qimg.setPixel( x, y, QColor::fromRgbF( r, g, b ).rgb() );
-        }
-    }
+        }  
+    }else{ //if mouse point valid
+
+        if (ui->brushToolCube->isChecked()){
+            cubeBrush.paint(qimg, mCurX, mCurY, mSelectionColor);
+        }else if( ui->brushToolSphere->isChecked())
+            sphereBrush.paint(qimg, mCurX, mCurY, mSelectionColor);
+        else
+            cubeBrush.paint(qimg, mCurX, mCurY, mSelectionColor);
+     }
 
     ui->labelImg->setImage( qimg );
 }
@@ -1433,12 +1686,14 @@ void AnnotatorWnd::labelImageMouseReleaseEvent(QMouseEvent * e)
 {
     QPoint pt = ui->labelImg->screenToImage( e->pos() );
 
+    //TODO copy stuff from moved to released
+
     int x = pt.x();
     int y = pt.y();
 
     // call plugin mouse move event
-    for (unsigned i=0; i < mPluginBaseList.size(); i++)
-        mPluginBaseList[i]->mouseReleaseEvent( e, x, y, mCurZSlice );
+    //for (unsigned i=0; i < mPluginBaseList.size(); i++)
+    //    mPluginBaseList[i]->mouseReleaseEvent( e, x, y, mCurZSlice );
 
     // select supervoxel for labeling?
     if ( e->button() == Qt::LeftButton )
@@ -1519,6 +1774,7 @@ void AnnotatorWnd::labelImageMouseReleaseEvent(QMouseEvent * e)
     }
 }
 
+//TODO change this to support plain annotation as well as SV annotation
 void AnnotatorWnd::labelImageMouseMoveEvent(QMouseEvent * e)
 {
     //qDebug("Mouse move: %d %d", e->x(), e->y());
@@ -1529,7 +1785,8 @@ void AnnotatorWnd::labelImageMouseMoveEvent(QMouseEvent * e)
     int x = pt.x();
     int y = pt.y();
 
-
+    mCurX = x;
+    mCurY = y;
 
     bool invalid = false;
     if (x < 0)  invalid = true;
@@ -1540,92 +1797,145 @@ void AnnotatorWnd::labelImageMouseMoveEvent(QMouseEvent * e)
     if (!invalid)
         updateCursorPixelInfo( x, y, mCurZSlice );
 
-    // call plugin mouse move event
-    for (unsigned i=0; i < mPluginBaseList.size(); i++)
-        mPluginBaseList[i]->mouseMoveEvent( e, x, y, mCurZSlice );
+    if( invalid )
+        return;
 
-    if(invalid || (!mSVRegion.valid))
-    {
+    // call plugin mouse move event if control is not pressed
+    if (ui->brushToolPlugin->isChecked()){
+        for (unsigned i=0; i < mPluginBaseList.size(); i++)
+            mPluginBaseList[i]->mouseMoveEvent( e, x, y, mCurZSlice );
         return;
     }
 
+    if(ui->superAnnotation->isChecked()){
+        if(!mSVRegion.valid)
+            return;
+        //TODO move this somwhere else
+        // convert to cropped region coordinates
+        UIntPoint3D croppedCoords;
+        if (!mSVRegion.inRegion( UIntPoint3D(x, y, mCurZSlice), &croppedCoords ))
+            return; // nothing to do, outside cropped area
 
-    if (e->modifiers() != Qt::ControlModifier)
-        return; //then don't do anything, so the person can move the mouse away
+        // find supervoxel idx
+        unsigned int slicIdx = mSVoxel.pixelToVoxel() (croppedCoords.x, croppedCoords.y, croppedCoords.z);
+        //qDebug("Slic IDX: %u", slicIdx);
 
-    // convert to cropped region coordinates
-    UIntPoint3D croppedCoords;
-    if (!mSVRegion.inRegion( UIntPoint3D(x, y, mCurZSlice), &croppedCoords ))
-        return; // nothing to do, outside cropped area
+        // find corresponding pixels and copy them to the local structure
+        mSVRegion.croppedToWholePixList( mVolumeData, mSVoxel.voxelToPixel().at(slicIdx), mSelectedSV.pixelList );
 
-    // find supervoxel idx
-    unsigned int slicIdx = mSVoxel.pixelToVoxel() (croppedCoords.x, croppedCoords.y, croppedCoords.z);
-    //qDebug("Slic IDX: %u", slicIdx);
-
-    // find corresponding pixels and copy them to the local structure
-    mSVRegion.croppedToWholePixList( mVolumeData, mSVoxel.voxelToPixel().at(slicIdx), mSelectedSV.pixelList );
-
-    // if restricted pixel values is checked..
-    if ( ui->groupBoxRestrictPixLabels->isChecked() )
-    {
-        unsigned char thrMin = ui->spinPixMin->value();
-        unsigned char thrMax = ui->spinPixMax->value();
-        // make copy
-        SlicMapType::value_type oldList = mSelectedSV.pixelList;
-
-        const bool dontOverwriteLabeledPixs = ui->chkDontOverwriteLabeledPIxs->isChecked();
-
-        mSelectedSV.pixelList.clear();
-
-        for (int i=0; i < (int)oldList.size(); i++)
+        // if restricted pixel values is checked..
+        if ( ui->groupBoxRestrictPixLabels->isChecked() )
         {
-            PixelType val = mVolumeData.data()[ oldList[i].index ];
+            unsigned char thrMin = ui->spinPixMin->value();
+            unsigned char thrMax = ui->spinPixMax->value();
+            // make copy
+            SlicMapType::value_type oldList = mSelectedSV.pixelList;
 
-            if ( (val < thrMin) || (val > thrMax) )
-                continue;   //ignore
+            const bool dontOverwriteLabeledPixs = ui->chkDontOverwriteLabeledPIxs->isChecked();
 
-            if ( dontOverwriteLabeledPixs ) {
-                bool alreayLabeled = mVolumeLabels.data()[ oldList[i].index ] != 0;
-                if ( alreayLabeled )
-                    continue;
+            mSelectedSV.pixelList.clear();
+
+            for (int i=0; i < (int)oldList.size(); i++)
+            {
+                PixelType val = mVolumeData.data()[ oldList[i].index ];
+
+                if ( (val < thrMin) || (val > thrMax) )
+                    continue;   //ignore
+
+                if ( dontOverwriteLabeledPixs ) {
+                    bool alreayLabeled = mVolumeLabels.data()[ oldList[i].index ] != 0;
+                    if ( alreayLabeled )
+                        continue;
+                }
+
+                mSelectedSV.pixelList.push_back( oldList[i] );
             }
-
-            mSelectedSV.pixelList.push_back( oldList[i] );
         }
-    }
 
-    // if score image present + score thresholding selected
-    if ( ui->chkScoreEnable->isChecked() && mScoreImage.isSizeLike(mVolumeData) )
-    {
-        // make copy
-        SlicMapType::value_type oldList = mSelectedSV.pixelList;
-
-        mSelectedSV.pixelList.clear();
-
-        unsigned char thrVal = ui->spinScoreThreshold->value();
-
-        for (int i=0; i < (int)oldList.size(); i++)
+        // if score image present + score thresholding selected
+        if ( ui->chkScoreEnable->isChecked() && mScoreImage.isSizeLike(mVolumeData) )
         {
-            PixelType val = mScoreImage.data()[ oldList[i].index ];
+            // make copy
+            SlicMapType::value_type oldList = mSelectedSV.pixelList;
 
-            if ( val < thrVal )
-                continue;   //ignore
+            mSelectedSV.pixelList.clear();
 
-            mSelectedSV.pixelList.push_back( oldList[i] );
+            unsigned char thrVal = ui->spinScoreThreshold->value();
+
+            for (int i=0; i < (int)oldList.size(); i++)
+            {
+                PixelType val = mScoreImage.data()[ oldList[i].index ];
+
+                if ( val < thrVal )
+                    continue;   //ignore
+
+                mSelectedSV.pixelList.push_back( oldList[i] );
+            }
         }
+
+
+        mSelectedSV.svIdx = slicIdx;
+        mSelectedSV.valid = true;
+
+        // if mouse is pressed, then automatically annotate it
+        if ( e->buttons() == Qt::LeftButton ) {
+            annotateSupervoxel( mSelectedSV, ui->comboLabel->currentIndex(), ui->chkOnlyCurSlice->isChecked() );
+            mSelectedSV.valid = false;
+        }
+
+    }else{
+        int label = ui->comboLabel->currentIndex();
+        int color = 0;
+        if ( e->buttons() == Qt::LeftButton ) {
+            //Shift to erase //TODO we want this?
+            if (e->modifiers() == Qt::ShiftModifier)
+                label = 0;
+
+            Matrix3D<LabelType> *annotationData;
+
+            int overlayindex = ui->layersDisplay->currentIndex().row();
+            if(overlayindex >= 0 && overlayindex < mOverlayVolumeList.size() ) {
+                annotationData = mOverlayVolumeList.at(overlayindex);
+                if (annotationData->isEmpty())
+                {
+                    annotationData->reallocSizeLike( getVolumeVoxelData() );
+                    annotationData->fill(0);
+
+                    mOverlayMenuActions[overlayindex]->setChecked(true);
+                    mOverlayMenuActions[overlayindex]->setEnabled(true);
+                }
+            } else
+                annotationData = &mVolumeLabels;
+
+            if(label != 0){
+                //TODO fix this
+                //color = mLblColorList.getColor(label-1).rgb();
+                switch(label) {
+                case 1:
+                    color = 128;
+                    break;
+                case 2:
+                    color = 255;
+                    break;
+                default:
+                    color = 255;
+                }
+            }else
+                color = 0;
+
+            if (ui->brushToolCube->isChecked())
+                cubeBrush.paint(*annotationData, x, y, mCurZSlice, color );
+            else if( ui->brushToolSphere->isChecked())
+                sphereBrush.paint(*annotationData, x, y, mCurZSlice, color);
+            else
+                cubeBrush.paint(*annotationData, x, y, mCurZSlice, color);
+        }
+
     }
 
-
-    mSelectedSV.svIdx = slicIdx;
-    mSelectedSV.valid = true;
-
-    // if mouse is pressed, then automatically annotate it
-    if ( e->buttons() == Qt::LeftButton ) {
-        annotateSupervoxel( mSelectedSV, ui->comboLabel->currentIndex(), ui->chkOnlyCurSlice->isChecked() );
-        mSelectedSV.valid = false;
-    }
-
+    //TODO check if I want this
     updateImageSlice();
+
 }
 
 void AnnotatorWnd::labelImageWheelEvent(QWheelEvent * e)
@@ -1712,8 +2022,9 @@ AnnotatorWnd::~AnnotatorWnd()
 
 void AnnotatorWnd::closeEvent(QCloseEvent *evt)
 {
-    if (mSaveLabelsOnExit)
-        saveAnnotation( mSaveLabelsOnExitPath );
+    //TODO not sure this is working
+//    if (mSaveLabelsOnExit)
+//        saveAnnotation( mSaveLabelsOnExitPath );
 
     qApp->quit();
     QMainWindow::closeEvent(evt);

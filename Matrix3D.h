@@ -515,6 +515,12 @@ public:
         return true;
     }
 
+    void set( int x, int y, int z, typename ItkImageType::PixelType value )
+    {
+        //Assuming coords valid
+        mData[x + y*mWidth + z*mWidth*mHeight] = value;
+    }
+
 private:
     T *mData;
     unsigned int mWidth, mHeight, mDepth;

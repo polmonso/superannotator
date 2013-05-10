@@ -8,6 +8,7 @@
 #include <vector>
 #include "utils.h"
 
+#include <QDebug>
 
 #include "itkImage.h"
 #include "itkImageFileWriter.h"
@@ -37,6 +38,8 @@ GraphCutsPlugin::GraphCutsPlugin(QObject *parent) : PluginBase(parent)
     maxWidth = 100;
     maxHeight = 100;
     maxDepth = 100;
+    gaussianVariance = 1.0;
+    sigma = 100.0;
 
     outputWeightImage = 0;
     cache_gaussianVariance = -1;
@@ -68,6 +71,8 @@ void GraphCutsPlugin::changeSettings()
         maxWidth = window->getMaxWidth();
         maxHeight = window->getMaxHeight();
         maxDepth = window->getMaxDepth();
+        gaussianVariance = window->getGaussianVariance();
+        sigma = window->getEdgeWeight();
     }
     delete window;
 }
@@ -86,13 +91,7 @@ void GraphCutsPlugin::runGraphCuts()
         return;
     }
 
-    GCDialog *window = new GCDialog;
-    if(window->exec() != QDialog::Accepted) {
-        delete window;
-        return;
-    }
-    float gaussianVariance = window->getVariance();
-    float sigma = window->getEdgeWeight();
+    qDebug() << "Running graphcuts with variance " << gaussianVariance << " and sigma " << sigma;
 
     // generate list of seeds
     Matrix3D<ScoreType> &seedOverlay = mPluginServices->getOverlayVolumeData(idx_seed_overlay);
@@ -104,11 +103,10 @@ void GraphCutsPlugin::runGraphCuts()
             for(int y = 0; y < seedOverlay.height(); ++y) {
                 for(int z = 0; z < seedOverlay.depth(); ++z) {
                     Point p(x,y,z);
-                    //p.x = x; p.y = y; p.z = z;
-                    if(seedOverlay(x,y,z) == 255) {
+                    if(seedOverlay(x,y,z) == label_seed) {
                         sourcePoints.push_back(p);
                     } else {
-                        if(seedOverlay(x,y,z) == 128) {
+                        if(seedOverlay(x,y,z) == label_sink) {
                            sinkPoints.push_back(p);
                         }
                     }
@@ -120,11 +118,10 @@ void GraphCutsPlugin::runGraphCuts()
             for(int y = 0; y < seedOverlay.height(); ++y) {
                 for(int z = 0; z < seedOverlay.depth(); ++z) {
                     Point p(x,y,z);
-                    //p.x = x; p.y = y; p.z = z;
-                    if(seedOverlay(x,y,z) == 255 && scoreImage(x,y,z) != 0) {
+                    if(seedOverlay(x,y,z) == label_seed && scoreImage(x,y,z) != 0) {
                         sourcePoints.push_back(p);
                     } else {
-                        if(seedOverlay(x,y,z) == 128 && scoreImage(x,y,z) != 0) {
+                        if(seedOverlay(x,y,z) == label_sink && scoreImage(x,y,z) != 0) {
                            sinkPoints.push_back(p);
                         }
                     }
@@ -134,11 +131,11 @@ void GraphCutsPlugin::runGraphCuts()
     }
 
     if(sourcePoints.size() == 0) {
-        printf("Error: 0 source points\n");
+        fprintf(stderr,"Error: 0 source points\n");
         return;
     }
     if(sinkPoints.size() == 0) {
-        printf("Error: 0 sink points\n");
+        fprintf(stderr,"Error: 0 sink points\n");
         return;
     }
 

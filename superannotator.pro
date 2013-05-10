@@ -6,11 +6,13 @@
 
 QT       += core gui
 
-TARGET = supervoxel-annotator
+CONFIG += console
+
+TARGET = superannotator
 TEMPLATE = app
 
 
-SOURCES += main.cpp\
+SOURCES +=\
         annotatorwnd.cpp \
     qlabelimage.cpp \
     textinfodialog.cpp \
@@ -18,7 +20,10 @@ SOURCES += main.cpp\
     PluginServices.cpp \
     preferencesdialog.cpp \
     mygraphicsview.cpp \
-    extras/waitform.cpp
+    extras/waitform.cpp \
+    brush.cpp \
+    overlay.cpp \
+    main.cpp
 
 HEADERS  += annotatorwnd.h \
     qlabelimage.h \
@@ -37,7 +42,9 @@ HEADERS  += annotatorwnd.h \
     MiscUtils.h \
     preferencesdialog.h \
     mygraphicsview.h \
-    extras/waitform.h
+    extras/waitform.h \
+    brush.h \
+    overlay.h
 
 FORMS    += annotatorwnd.ui \
     textinfodialog.ui \

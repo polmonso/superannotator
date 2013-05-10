@@ -53,6 +53,7 @@ Q_DECL_EXPORT unsigned int PluginServices::getMaxOverlayVolumes()
 
 Q_DECL_EXPORT Matrix3D<ScoreType> & PluginServices::getOverlayVolumeData( unsigned int num ) const
 {
+    //TODO that's kind of cheating, as it returns the wrong overlay:
     if (num >= getMaxOverlayVolumes())
         return getOverlayVolumeData( getMaxOverlayVolumes() - 1 ) ;
 

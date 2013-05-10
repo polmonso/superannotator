@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>435</width>
-    <height>240</height>
+    <width>437</width>
+    <height>248</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -35,12 +35,43 @@
      <x>10</x>
      <y>20</y>
      <width>401</width>
-     <height>172</height>
+     <height>171</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="1">
-     <widget class="QSpinBox" name="sbActiveOverlay"/>
+    <item row="2" column="2">
+     <widget class="QSpinBox" name="sbMaxHeight">
+      <property name="maximum">
+       <number>10000</number>
+      </property>
+      <property name="value">
+       <number>100</number>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="0">
+     <widget class="QLabel" name="label_3">
+      <property name="text">
+       <string>Max (width, height, depth)</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="1">
+     <widget class="QDoubleSpinBox" name="sbVariance">
+      <property name="value">
+       <double>1.000000000000000</double>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="1">
+     <widget class="QSpinBox" name="sbMaxWidth">
+      <property name="maximum">
+       <number>10000</number>
+      </property>
+      <property name="value">
+       <number>100</number>
+      </property>
+     </widget>
     </item>
     <item row="0" column="0">
      <widget class="QLabel" name="label">
@@ -56,41 +87,21 @@
       </property>
      </widget>
     </item>
-    <item row="2" column="0">
-     <widget class="QLabel" name="label_3">
-      <property name="text">
-       <string>Max (width, height, depth)</string>
-      </property>
-     </widget>
-    </item>
-    <item row="2" column="1">
-     <widget class="QSpinBox" name="sbMaxWidth">
-      <property name="maximum">
-       <number>10000</number>
-      </property>
-      <property name="value">
-       <number>100</number>
-      </property>
-     </widget>
-    </item>
-    <item row="1" column="1">
-     <widget class="QSpinBox" name="sbBrushSizeX"/>
-    </item>
     <item row="1" column="2">
      <widget class="QSpinBox" name="sbBrushSizeY"/>
     </item>
-    <item row="1" column="3">
-     <widget class="QSpinBox" name="sbBrushSizeZ"/>
-    </item>
-    <item row="2" column="2">
-     <widget class="QSpinBox" name="sbMaxHeight">
-      <property name="maximum">
-       <number>10000</number>
+    <item row="3" column="0">
+     <widget class="QLabel" name="label_4">
+      <property name="text">
+       <string>Gaussian variance</string>
       </property>
-      <property name="value">
-       <number>100</number>
+      <property name="indent">
+       <number>1</number>
       </property>
      </widget>
+    </item>
+    <item row="1" column="3">
+     <widget class="QSpinBox" name="sbBrushSizeZ"/>
     </item>
     <item row="2" column="3">
      <widget class="QSpinBox" name="sbMaxDepth">
@@ -99,6 +110,29 @@
       </property>
       <property name="value">
        <number>100</number>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="1">
+     <widget class="QSpinBox" name="sbActiveOverlay"/>
+    </item>
+    <item row="1" column="1">
+     <widget class="QSpinBox" name="sbBrushSizeX"/>
+    </item>
+    <item row="4" column="0">
+     <widget class="QLabel" name="label_5">
+      <property name="text">
+       <string>Edge strength</string>
+      </property>
+     </widget>
+    </item>
+    <item row="4" column="1">
+     <widget class="QDoubleSpinBox" name="sbEdgeWeight">
+      <property name="maximum">
+       <double>1000.000000000000000</double>
+      </property>
+      <property name="value">
+       <double>100.000000000000000</double>
       </property>
      </widget>
     </item>

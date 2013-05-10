@@ -6,7 +6,7 @@
 // takes a slice of total size numElem in contiguous memory
 //  and creates a mask with an overlay, according to the given color
 // destImg can be equal to baseImg
-static inline void overlayRGB( const unsigned int *baseImg, const unsigned char *overlayImg, unsigned int *destImg, unsigned int numElem, const QColor &color )
+static inline void overlayRGB( const unsigned int *baseImg, const unsigned char *overlayImg, unsigned int *destImg, unsigned int numElem, const QColor &color, float alpha = 0.5 )
 {
     qreal sR, sG, sB;
     color.getRgbF( &sR, &sG,&sB );
@@ -19,15 +19,15 @@ static inline void overlayRGB( const unsigned int *baseImg, const unsigned char 
     for (unsigned int i=0; i < numElem; i++)
     {
         qreal r = (baseImg[i] >> 16) & 0xFF;
-        qreal g = (baseImg[i] >> 8) & 0xFF;
-        qreal b = (baseImg[i] >> 0) & 0xFF;
+        qreal g = (baseImg[i] >> 8)  & 0xFF;
+        qreal b = (baseImg[i] >> 0)  & 0xFF;
 
         qreal sc = overlayImg[i] * div255;
         qreal scInv = 1.0 - sc;
 
-        g = scInv*g + sc*sG;
-        b = scInv*b + sc*sB;
-        r = r * scInv +  sc*sR;
+        g = g*(1-alpha) + (scInv*g + sc*sG)*alpha;
+        b = b*(1-alpha) + (scInv*b + sc*sB)*alpha;
+        r = r*(1-alpha) + (scInv*r + sc*sR)*alpha;
 
         unsigned int iR = r;
         unsigned int iG = g;

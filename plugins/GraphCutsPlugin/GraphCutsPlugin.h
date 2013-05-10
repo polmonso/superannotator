@@ -19,6 +19,10 @@ const int idx_weight_overlay = 2;
 const int idx_output_overlay = 3;
 const int idx_label_overlay = 4;
 
+const int label_background = 0;
+const int label_seed = 128;
+const int label_sink = 255;
+
 enum eGCType
 {
     GC_DEFAULT = 0,
@@ -46,6 +50,9 @@ private:
     int maxWidth;
     int maxHeight;
     int maxDepth;
+
+    float gaussianVariance;
+    float sigma;
 
     bool mouseEventDetected;
 

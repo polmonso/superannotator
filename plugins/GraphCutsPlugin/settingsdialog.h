@@ -23,6 +23,8 @@ public:
     int getMaxWidth();
     int getMaxHeight();
     int getMaxDepth();
+    int getGaussianVariance();
+    int getEdgeWeight();
 
 private:
     Ui::settingsDialog *ui;

@@ -3,6 +3,8 @@ INCLUDEPATH += ../../
 INCLUDEPATH += /home/lucchi/src/EM/superpixels/lib/graphCuts/
 INCLUDEPATH += ../dependencies/graphCuts
 
+CONFIG += console
+
 HEADERS += \
     GraphCutsPlugin.h \
     graphCut.h \

@@ -56,3 +56,13 @@ int settingsDialog::getMaxDepth()
 {
     return ui->sbMaxDepth->value();
 }
+
+int settingsDialog::getGaussianVariance()
+{
+    return ui->sbVariance->value();
+}
+
+int settingsDialog::getEdgeWeight()
+{
+    return ui->sbEdgeWeight->value();
+}

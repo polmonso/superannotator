@@ -21,9 +21,15 @@ public:
     unsigned getMaxVoxelsForSV() const;
     void setMaxVoxelsForSV( unsigned val );
 
+    unsigned getSliceJump() const;
+    void setSliceJump( unsigned val );
+
 public slots:
     void browseFijiPathClicked();
     void spinMaxVoxValueChanged(int);
+
+private slots:
+    void on_spinSliceJump_valueChanged(int arg1);
 
 private:
     Ui::PreferencesDialog *ui;
