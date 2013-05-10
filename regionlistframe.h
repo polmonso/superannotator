@@ -45,9 +45,6 @@ signals:
     // emitted when the user clicked to label a region
     void labelRegion( unsigned int regionIdx , unsigned int labelIdx );
 
-private slots:
-    void on_butLabelRegion_clicked();
-
 private:
     Ui::RegionListFrame *ui;
 };

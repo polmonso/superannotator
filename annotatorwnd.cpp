@@ -1147,8 +1147,8 @@ void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )
 
         //TODO autolabel each region
         if(ui->autoLabel->isChecked()){
-            foreach region do asdf
-            labelRegion( regionidx, labelidx*255/lblCount );
+            //foreach region do asdf
+            //labelRegion( regionidx, labelidx*255/lblCount );
         }
     }
 }

@@ -105,6 +105,8 @@ private:
 
     void runConnectivityCheck( const Region3D &reg );
 
+    void labelRegion(uint regionIdx, uint labelId);
+
 public:
 
     std::vector< Overlay * >  mOverlayInfo;
