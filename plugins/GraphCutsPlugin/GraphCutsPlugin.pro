@@ -2,6 +2,7 @@ TEMPLATE = lib
 INCLUDEPATH += ../../
 INCLUDEPATH += /home/lucchi/src/EM/superpixels/lib/graphCuts/
 INCLUDEPATH += ../dependencies/graphCuts
+INCLUDEPATH += third-party/graphCuts
 
 CONFIG += console
 
