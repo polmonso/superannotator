@@ -846,7 +846,7 @@ void AnnotatorWnd::actionImportAnnotTriggered()
     bool ok = false;
 
     // ask for threshold
-    int threshold = QInputDialog::getInteger( 0, "Threshold value", "Specify the thresholding value:",
+    int threshold = QInputDialog::getInt( 0, "Threshold value", "Specify the thresholding value:",
                               128, 0, 255, 1, &ok );
     if (!ok) return;
 
@@ -1146,10 +1146,10 @@ void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )
         statusBarMsg( curMsg + QString("Region count: %1").arg(lblCount), 2000 );
 
         //TODO autolabel each region
-        if(ui->autoLabel->isChecked()){
-            foreach region do asdf
-            labelRegion( regionidx, labelidx*255/lblCount );
-        }
+        //if(ui->autoLabel->isChecked()){
+            //foreach region do asdf
+            //labelRegion( regionidx, labelidx*255/lblCount );
+        //}
     }
 }
 

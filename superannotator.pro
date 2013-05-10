@@ -6,6 +6,9 @@
 
 QT       += core gui
 
+#QT5
+QT += widgets
+
 CONFIG += console
 
 TARGET = superannotator

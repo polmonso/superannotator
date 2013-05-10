@@ -1,4 +1,7 @@
-#include <QtGui/QApplication>
+//qt4
+//#include <QtGui/QApplication>
+//qt5
+#include <QtWidgets/QApplication>
 #include "annotatorwnd.h"
 
 int main(int argc, char *argv[])
