@@ -352,7 +352,11 @@ QRect MyGraphicsView::getViewableRect() const
         r.setLeft(0);
 
     // get only intersection between pixmap and region
+    #ifdef QT4
     r = r.intersect( mScene->sceneRect().toRect() );
+    #else
+    r = r.intersected( mScene->sceneRect().toRect() );
+    #endif
 
     //qDebug() << "Rect2 " << r;
 

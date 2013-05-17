@@ -8,3 +8,6 @@ plugins/*-build-desktop*
 *.pro.user
 customUserDefs.inc
 *~
+*.o
+moc_*.cpp
+ui_*.h

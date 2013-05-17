@@ -6,9 +6,6 @@
 
 QT       += core gui
 
-#QT5
-QT += widgets
-
 CONFIG += console
 
 TARGET = superannotator
@@ -171,7 +168,7 @@ win32 {
  LIBS += -lsnmpapi -lrpcrt4 -lws2_32 -lgdi32
 }
 
-LIBS += -luuid
+#LIBS += -luuid
 
 OTHER_FILES += \
     TODO.txt

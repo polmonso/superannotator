@@ -2,9 +2,9 @@
 #define ANNOTATORWND_H
 
 //Qt4
-//#include <QMainWindow>
+#include <QMainWindow>
 //Qt5
-#include <QtWidgets>
+//#include <QtWidgets>
 
 #include "Matrix3D.h"
 #include "ColorLists.h"
@@ -13,7 +13,7 @@
 #include "CommonTypes.h"
 
 #include <QFileInfo>
-#include <stddef.h>
+//#include <stddef.h>
 #include "brush.h"
 
 #include "overlay.h"

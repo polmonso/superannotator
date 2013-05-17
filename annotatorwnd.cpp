@@ -116,7 +116,9 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     if (stdFName.empty())
     {
+  std::cout << "launching qdialog... " << __LINE__ << std::endl;
         QString fileName = QFileDialog::getOpenFileName( 0, "Load image", mSettingsData.loadPathVolume, mFileTypeFilter );
+  std::cout << "...done: " << __LINE__ << std::endl;
 
         if (fileName.isEmpty()) {
             QTimer::singleShot(1, qApp, SLOT(quit()));
@@ -648,7 +650,9 @@ void AnnotatorWnd::scanPlugins( const QString &pluginFolder )
             continue;
         }
 
+    qDebug() << "create plugin " << i << " " << __LINE__<< pluginFolder;
         PluginBase *newPlugin = createPlugin();
+    qDebug() << "Created plugin " << i << " " << __LINE__<< pluginFolder;
         mPluginBaseList.push_back( newPlugin );
 
         mPluginServList.append( PluginServices( newPlugin->pluginName(), this ) );
