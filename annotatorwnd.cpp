@@ -234,7 +234,7 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     ui->chkLabelOverlay->setChecked(true);
 
-    connect( ui->layersDisplay, SIGNAL(currentRowChanged(int)), this, SLOT(selectOverlayChanged()));
+    connect( ui->layersDisplay, SIGNAL(currentRowChanged(int)), this, SLOT(selectedOverlayChanged()));
 
     mOverlayLabelImage = ui->chkLabelOverlay->checkState() == Qt::Checked;
 
