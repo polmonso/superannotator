@@ -25,6 +25,7 @@ extern "C" Q_DECL_EXPORT PluginBase* createPlugin();
 
 PluginBase *createPlugin()
 {
+    qDebug() << "[graph cuts] Creating plugin. " << __LINE__;
     return new GraphCutsPlugin();
 }
 

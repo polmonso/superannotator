@@ -116,7 +116,9 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     if (stdFName.empty())
     {
+  std::cout << "launching qdialog... " << __LINE__ << std::endl;
         QString fileName = QFileDialog::getOpenFileName( 0, "Load image", mSettingsData.loadPathVolume, mFileTypeFilter );
+  std::cout << "...done: " << __LINE__ << std::endl;
 
         if (fileName.isEmpty()) {
             QTimer::singleShot(1, qApp, SLOT(quit()));
@@ -648,7 +650,9 @@ void AnnotatorWnd::scanPlugins( const QString &pluginFolder )
             continue;
         }
 
+    qDebug() << "create plugin " << i << " " << __LINE__<< pluginFolder;
         PluginBase *newPlugin = createPlugin();
+    qDebug() << "Created plugin " << i << " " << __LINE__<< pluginFolder;
         mPluginBaseList.push_back( newPlugin );
 
         mPluginServList.append( PluginServices( newPlugin->pluginName(), this ) );
@@ -846,7 +850,7 @@ void AnnotatorWnd::actionImportAnnotTriggered()
     bool ok = false;
 
     // ask for threshold
-    int threshold = QInputDialog::getInteger( 0, "Threshold value", "Specify the thresholding value:",
+    int threshold = QInputDialog::getInt( 0, "Threshold value", "Specify the thresholding value:",
                               128, 0, 255, 1, &ok );
     if (!ok) return;
 
@@ -1146,10 +1150,10 @@ void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )
         statusBarMsg( curMsg + QString("Region count: %1").arg(lblCount), 2000 );
 
         //TODO autolabel each region
-        if(ui->autoLabel->isChecked()){
+        //if(ui->autoLabel->isChecked()){
             //foreach region do asdf
             //labelRegion( regionidx, labelidx*255/lblCount );
-        }
+        //}
     }
 }
 
