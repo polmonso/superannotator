@@ -25,7 +25,6 @@ extern "C" Q_DECL_EXPORT PluginBase* createPlugin();
 
 PluginBase *createPlugin()
 {
-    qDebug() << "[graph cuts] Creating plugin. " << __LINE__;
     return new GraphCutsPlugin();
 }
 
@@ -80,7 +79,8 @@ void GraphCutsPlugin::changeSettings()
 
 void GraphCutsPlugin::runGraphCuts()
 {
-    const int seedRadius = 3;
+    //const int seedRadius = 3;
+    const int seedRadius = 0;
     const bool outputOverlays = false;
 
     QAction *action = qobject_cast<QAction *>(sender());
@@ -298,7 +298,9 @@ void GraphCutsPlugin::runGraphCuts()
                     }
                 }
                 mPluginServices->setOverlayVisible( idx_label_overlay, true );
-            } else {
+            }
+            /*
+            else {
                 ulong cubeSize = volData.depth()*volData.height()*volData.width()*3;
                 uchar* dPtr = new uchar[cubeSize];
                 ulong cubeIdx = 0;
@@ -316,6 +318,7 @@ void GraphCutsPlugin::runGraphCuts()
                 }
                 exportColorTIFCube(dPtr, "cc", volData.depth(), volData.height(), volData.width());
             }
+            */
         }
     }
 

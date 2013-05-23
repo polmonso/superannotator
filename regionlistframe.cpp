@@ -37,6 +37,12 @@ void RegionListFrame::keyReleaseEvent(QKeyEvent *evt)
     }
 }
 
+void RegionListFrame::closeEvent(QCloseEvent *event)
+{
+      emit widgetClosed();
+      event->accept();
+}
+
 void RegionListFrame::butLabelRegionClicked()
 {
     QMenu menu("Assign to", this);

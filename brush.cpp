@@ -3,16 +3,56 @@
 #include <QColor>
 #include <QtGlobal>
 
-SizedBrush::SizedBrush(){
+SizedBrush::SizedBrush()
+{
     width = height = 10;
     depth = 3;
 }
 
-void SizedBrush::setSize(int width, int height, int depth){
+void SizedBrush::setSize(int width, int height, int depth)
+{
     this->width = width;
     this->height = height;
     this->depth = depth;
 }
+
+PixelBrush::PixelBrush()
+{
+
+}
+
+void PixelBrush::paint(QImage &qimg,
+                        int x, int y, QColor highlightColor)
+{
+    const qreal opacity = 0.6;
+    const qreal invOpacity = 0.99 - opacity;
+
+    const qreal cRd = highlightColor.redF() * opacity;
+    const qreal cGr = highlightColor.greenF() * opacity;
+    const qreal cBl = highlightColor.blueF() * opacity;
+
+    //TODO maybe skip rows by shifting i=0,j=0...
+    if (x < 0 || y < 0)
+        return;
+    if (x >= qimg.width() || y >= qimg.height())
+        return;
+    QColor pixColor = QColor::fromRgb( qimg.pixel(x, y) );
+
+    qreal r = pixColor.redF() * invOpacity + cRd;
+    qreal g = pixColor.greenF() * invOpacity + cGr;
+    qreal b = pixColor.blueF() * invOpacity + cBl;
+
+    QRgb qrgb =  QColor::fromRgbF( r, g, b ).rgb();
+
+    qimg.setPixel( x, y, qrgb);
+
+}
+
+void PixelBrush::paint(Matrix3D<LabelType> &data, int x, int y, int z, LabelType label)
+{
+    data.set(x, y, z, label);
+}
+
 
 CubeBrush::CubeBrush(){
 //using superclass constructor

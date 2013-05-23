@@ -97,6 +97,7 @@ private:
 
     CubeBrush cubeBrush;
     SphereBrush sphereBrush;
+    PixelBrush pixelBrush;
 
     void updateCursorPixelInfo( int x, int y, int z );   // shows current pixel position
 
@@ -110,7 +111,7 @@ private:
 
     void runConnectivityCheck( const Region3D &reg );
 
-    void labelRegion(uint regionIdx, uint labelId);
+    void labelRegion(Matrix3D<LabelType> &data, uint regionIdx, uint labelValue);
 
 public:
 
@@ -127,6 +128,7 @@ public:
     Matrix3D<ScoreType> &   getScoreVoxelData()  {  return mScoreImage; }
 
     Matrix3D<OverlayType> & getOverlayVoxelData( unsigned int num );
+    Matrix3D<OverlayType> *getSelectedOverlayData();
     void                    setOverlayVisible( unsigned int num, bool visible );
 
     // returns one string per class name
@@ -191,6 +193,7 @@ public slots:
     // called when the region changes in the region info window
     void regionListFrameIndexChanged(int);
     void regionListFrameLabelRegion(uint,uint);
+    void clearSVSelection();
 
     // called when an image wants to be loaded in an overlay layer
     void overlayLoadTriggered();

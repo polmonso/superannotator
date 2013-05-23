@@ -116,9 +116,7 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     if (stdFName.empty())
     {
-  std::cout << "launching qdialog... " << __LINE__ << std::endl;
         QString fileName = QFileDialog::getOpenFileName( 0, "Load image", mSettingsData.loadPathVolume, mFileTypeFilter );
-  std::cout << "...done: " << __LINE__ << std::endl;
 
         if (fileName.isEmpty()) {
             QTimer::singleShot(1, qApp, SLOT(quit()));
@@ -325,7 +323,7 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     //TODO this default transparency is hardcoded
     mOverlayInfo[0]->alpha = 0.80;
-    mOverlayInfo[1]->alpha = 0.10;
+    mOverlayInfo[1]->alpha = 0.20;
 
     //TODO assuming there will always be at least one overlay
     ui->layersDisplay->setCurrentRow(0);
@@ -600,6 +598,28 @@ Matrix3D<OverlayType> &  AnnotatorWnd::getOverlayVoxelData( unsigned int num )
 {
     return *mOverlayVolumeList.at(num);  // note the assert on num!
 }
+
+Matrix3D<OverlayType> * AnnotatorWnd::getSelectedOverlayData( )
+{
+    int overlayindex = ui->layersDisplay->currentIndex().row();
+    if(overlayindex >= 0 && overlayindex < mOverlayVolumeList.size() )
+    {
+        Matrix3D<OverlayType> *annotationData = mOverlayVolumeList.at(overlayindex);
+        if (annotationData->isEmpty())
+        {
+            annotationData->reallocSizeLike( getVolumeVoxelData() );
+            annotationData->fill(0);
+
+            mOverlayMenuActions[overlayindex]->setChecked(true);
+            mOverlayMenuActions[overlayindex]->setEnabled(true);
+        }
+        return annotationData;
+    } else
+    {
+        throw std::runtime_error("Invalid overlay index. Is any selected?");
+    }
+}
+
 
 void AnnotatorWnd::setOverlayVisible( unsigned int num, bool visible )
 {
@@ -1136,6 +1156,9 @@ void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )
             connect( mLabelListData.pFrame, SIGNAL(labelRegion(uint,uint)),
                      this, SLOT(regionListFrameLabelRegion(uint,uint)));
 
+            connect( mLabelListData.pFrame, SIGNAL(widgetClosed()),
+                     this, SLOT(clearSVSelection()));
+
             mLabelListData.pFrame->setRegionData( mLabelListData.shapeInfo );
 
             mLabelListData.pFrame->show();
@@ -1150,29 +1173,44 @@ void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )
         statusBarMsg( curMsg + QString("Region count: %1").arg(lblCount), 2000 );
 
         //TODO autolabel each region
-        //if(ui->autoLabel->isChecked()){
-            //foreach region do asdf
-            //labelRegion( regionidx, labelidx*255/lblCount );
-        //}
+        if( ui->autoLabel->isChecked() ){
+
+            Matrix3D<LabelType> *overlayData = getSelectedOverlayData();
+            for(int i=0; i < lblCount; i++){
+                //TODO fix the labeling color
+                labelRegion( *overlayData, i, i*205/lblCount + 50 );
+            }
+
+        }
     }
 }
 
-void AnnotatorWnd::labelRegion(uint regionIdx, uint labelId)
+void AnnotatorWnd::labelRegion(Matrix3D<LabelType> &data, uint regionIdx, uint labelValue)
 {
     //TODO how are regions stored?
-    //unsigned int pixLabelIdx = mLabelListData.shapeInfo[regionIdx].labelIdx();
-    //mLabelListData.region3D.croppedToWholePixList( mVolumeLabels, mLabelListData.labelToPixelMap.at( pixLabelIdx - 1 ), mSelectedSV.pixelList );
-
-    qDebug() << "Implement me!";
-
+    unsigned int pixLabelIdx = mLabelListData.shapeInfo[regionIdx].labelIdx();
+    PixelInfoList pixelList;
+    PixelInfo pixelInfo;
+    mLabelListData.region3D.croppedToWholePixList( data,
+                                                   mLabelListData.labelToPixelMap.at( pixLabelIdx - 1 ),
+                                                   pixelList );
+    for( int i=0; i<pixelList.size(); i++ )
+    {
+        pixelInfo = pixelList[i];
+        pixelBrush.paint(*getSelectedOverlayData(), pixelInfo.coords.x, pixelInfo.coords.y, pixelInfo.coords.z, labelValue);
+    }
 
     updateImageSlice();
 }
 
 void AnnotatorWnd::regionListFrameLabelRegion(uint regionIdx, uint labelId)
 {
+
     unsigned int pixLabelIdx = mLabelListData.shapeInfo[regionIdx].labelIdx();
-    mLabelListData.region3D.croppedToWholePixList( mVolumeLabels, mLabelListData.labelToPixelMap.at( pixLabelIdx - 1 ), mSelectedSV.pixelList );
+
+    mLabelListData.region3D.croppedToWholePixList( mVolumeLabels,
+                                                   mLabelListData.labelToPixelMap.at( pixLabelIdx - 1 ),
+                                                   mSelectedSV.pixelList );
 
     mSelectedSV.valid = true;
 
@@ -1188,7 +1226,9 @@ void AnnotatorWnd::regionListFrameIndexChanged(int newRegionIdx)
     //qDebug() << newRegionIdx;
     // find pixels and set as highlighted supervoxel
     unsigned int pixLabelIdx = mLabelListData.shapeInfo[newRegionIdx].labelIdx();
-    mLabelListData.region3D.croppedToWholePixList( mVolumeLabels, mLabelListData.labelToPixelMap.at( pixLabelIdx - 1 ), mSelectedSV.pixelList );
+    mLabelListData.region3D.croppedToWholePixList( mVolumeLabels,
+                                                   mLabelListData.labelToPixelMap.at( pixLabelIdx - 1 ),
+                                                   mSelectedSV.pixelList );
 
     // compute centroid so that we can focus on the area we want
     UIntPoint3D centerPix;    // will hold centroid
@@ -1201,6 +1241,13 @@ void AnnotatorWnd::regionListFrameIndexChanged(int newRegionIdx)
     ui->zSlider->setValue( centerPix.z );
 
     mSelectedSV.valid = true;
+
+    updateImageSlice();
+}
+
+void AnnotatorWnd::clearSVSelection()
+{
+    mSelectedSV.valid = false;
 
     updateImageSlice();
 }
@@ -1876,7 +1923,6 @@ void AnnotatorWnd::labelImageMouseMoveEvent(QMouseEvent * e)
                 mSelectedSV.pixelList.push_back( oldList[i] );
             }
         }
-
 
         mSelectedSV.svIdx = slicIdx;
         mSelectedSV.valid = true;

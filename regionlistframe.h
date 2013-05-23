@@ -38,12 +38,16 @@ public slots:
 protected:
     void keyReleaseEvent(QKeyEvent *);
 
+    void closeEvent(QCloseEvent *event);
+
 signals:
     // this is emitted when the current region selection is changed
     void currentRegionChanged(int newRegionIdx);
 
     // emitted when the user clicked to label a region
     void labelRegion( unsigned int regionIdx , unsigned int labelIdx );
+
+    void widgetClosed();
 
 private:
     Ui::RegionListFrame *ui;

@@ -210,9 +210,7 @@ void GraphCut::run_maxflow(Cube* cube,
   m_node_ids = new GraphType::node_id[nNodes];
   for(ulong i = 0;i < nNodes; i++) {
     m_node_ids[i] = m_graph->add_node();
-  }
-
-  printf("[GraphCuts] %d nodes added\n", nNodes);
+  }  
 
   float* histoSource = 0;
   float* histoSink = 0;
@@ -268,11 +266,39 @@ void GraphCut::run_maxflow(Cube* cube,
       break;
   }
 
-  ulong nodeIdx = 0;
   nEdges = 0;
+  nNodes = 0;
   ulong dist;
   int seedX, seedY, seedZ;
   minDist *= minDist; //squared distance
+
+  // Compute weights to source and sink nodes
+  ulong nij = ni*nj;
+  weightToSource = K;
+  weightToSink = 0;
+  for(vector<Point>::iterator itPoint=sourcePoints.begin();
+      itPoint != sourcePoints.end();itPoint++) {
+    seedX = itPoint->x - subX;
+    seedY = itPoint->y - subY;
+    seedZ = itPoint->z - subZ;
+    ulong nodeIdx = seedZ*nij + seedY*ni + seedX;
+    printf("(%d,%d,%d) %ld : %f/%f\n",seedX,seedY,seedZ,nodeIdx,weightToSource,weightToSink);
+    m_graph->add_tweights(m_node_ids[nodeIdx],weightToSource,weightToSink);
+  }
+
+  weightToSource = 0;
+  weightToSink = K;
+  for(vector<Point>::iterator itPoint=sinkPoints.begin();
+      itPoint != sinkPoints.end();itPoint++) {
+    seedX = itPoint->x - subX;
+    seedY = itPoint->y - subY;
+    seedZ = itPoint->z - subZ;
+    ulong nodeIdx = seedZ*nij + seedY*ni + seedX;
+    printf("(%d,%d,%d) %ld : %f/%f\n",seedX,seedY,seedZ,nodeIdx,weightToSource,weightToSink);
+    m_graph->add_tweights(m_node_ids[nodeIdx],weightToSource,weightToSink);
+  }
+
+  ulong nodeIdx = 0;
   for(int k = 0;k<nk;k++) {
     for(int j = 0;j<nj;j++) {
       for(int i = 0;i<ni;i++,nodeIdx++) {
@@ -280,90 +306,87 @@ void GraphCut::run_maxflow(Cube* cube,
         if(scores->at(i+subX,j+subY,k+subZ) == 0) // background
             continue;
 
-        // Compute regional term
-        weightToSink = 0.;
-        weightToSource = 0;
+        ++nNodes;
 
-        // Compute weights to source and sink nodes
-        for(vector<Point>::iterator itPoint=sourcePoints.begin();
-            itPoint != sourcePoints.end();itPoint++) {
-          seedX = itPoint->x - subX;
-          seedY = itPoint->y - subY;
-          seedZ = itPoint->z - subZ;
-          dist = (seedX-i)*(seedX-i) + (seedY-j)*(seedY-j) + (seedZ-k)*(seedZ-k);
-          if(dist <= minDist) {
-            //printf("[GraphCuts] Source found %d %d %d\n", i, j, k);
-            weightToSource = K;
-            break;
-          }
-        }
+        if(unaryType == UNARY_SCORE || unaryType == UNARY_HISTOGRAMS) {
+            // Compute regional term
+            weightToSink = 0;
+            weightToSource = 0;
 
-        for(vector<Point>::iterator itPoint=sinkPoints.begin();
-            itPoint != sinkPoints.end();itPoint++) {
-          seedX = itPoint->x - subX;
-          seedY = itPoint->y - subY;
-          seedZ = itPoint->z - subZ;
-          dist = (seedX-i)*(seedX-i) + (seedY-j)*(seedY-j) + (seedZ-k)*(seedZ-k);
-          if(dist <= minDist) {
-            //printf("[GraphCuts] Sink found %d %d %d\n", i, j, k);
-            weightToSink = K;
-            break;
-          }
-        }
+            // Compute weights to source and sink nodes
+            for(vector<Point>::iterator itPoint=sourcePoints.begin();
+                itPoint != sourcePoints.end();itPoint++) {
+              seedX = itPoint->x - subX;
+              seedY = itPoint->y - subY;
+              seedZ = itPoint->z - subZ;
+              dist = (seedX-i)*(seedX-i) + (seedY-j)*(seedY-j) + (seedZ-k)*(seedZ-k);
+              if(dist <= minDist) {
+                //printf("[GraphCuts] Source found %d %d %d\n", i, j, k);
+                weightToSource = K;
+                break;
+              }
+            }
 
-        switch(unaryType) {
-        case UNARY_SCORE:
-        {
-            ulong cubeIdx = ((k+subZ)*scoreCube_sliceSize) + ((j+subY)*scores->width) + (i+subX);
-            if(weightToSource != K && weightToSink != K) {
-                weightToSource = scores->data[cubeIdx];
-                weightToSink = max(0,maxScore-scores->data[cubeIdx]);
+            for(vector<Point>::iterator itPoint=sinkPoints.begin();
+                itPoint != sinkPoints.end();itPoint++) {
+              seedX = itPoint->x - subX;
+              seedY = itPoint->y - subY;
+              seedZ = itPoint->z - subZ;
+              dist = (seedX-i)*(seedX-i) + (seedY-j)*(seedY-j) + (seedZ-k)*(seedZ-k);
+              if(dist <= minDist) {
+                //printf("[GraphCuts] Sink found %d %d %d\n", i, j, k);
+                weightToSink = K;
+                break;
+              }
             }
-            /*
-            if(weightToSink != K) {
-                weightToSink = 255-scores->data[cubeIdx];
-            }
-            */
-            break;
-        }
-        case UNARY_HISTOGRAMS:
-        {
-          if(weightToSource != K) {
-            //FIXME : binId !!!!!!!!!!!
-            // Get value from histogram
-            int binId = (int)(cube->at(i,j,k)/nbItemsPerBin) - 1;
-            if(binId >= histoSize) {
-              //printf("binId %d >= histoSize\n", binId);
-              binId = histoSize - 1;
-            }
-            if(binId < 0) {
-              //printf("binId %d < 0\n", binId);
-              binId = 0;
-            }
-            weightToSource = histoSource[binId];
-          }
-          if(weightToSink != K) {
-            // Get value from histogram
-            int binId = (int)(cube->at(i,j,k)/nbItemsPerBin) - 1;
-            if(binId >= histoSize) {
-              //printf("binId >= histoSize\n");
-              binId = histoSize - 1;
-            }
-            if(binId < 0) {
-              //printf("binId < 0\n");
-              binId = 0;
-            }
-            weightToSink = histoSink[binId];
-          }
-          break;
-        }
-        default:
-            break;
-        }
 
-        if(weightToSource != 0 || weightToSink != 0) {
-            //  printf("(%d,%d,%d) : %f/%f\n",i,j,k,weightToSource,weightToSink);
-            m_graph->add_tweights(m_node_ids[nodeIdx],weightToSource,weightToSink);
+            switch(unaryType) {
+            case UNARY_SCORE:
+            {
+                ulong cubeIdx = ((k+subZ)*scoreCube_sliceSize) + ((j+subY)*scores->width) + (i+subX);
+                if(weightToSource != K && weightToSink != K) {
+                    weightToSource = scores->data[cubeIdx];
+                    weightToSink = max(0,maxScore-scores->data[cubeIdx]);
+                }
+                break;
+            }
+            case UNARY_HISTOGRAMS:
+            {
+              if(weightToSource != K) {
+                // Get value from histogram
+                int binId = (int)(cube->at(i,j,k)/nbItemsPerBin) - 1;
+                if(binId >= histoSize) {
+                  //printf("binId %d >= histoSize\n", binId);
+                  binId = histoSize - 1;
+                }
+                if(binId < 0) {
+                  //printf("binId %d < 0\n", binId);
+                  binId = 0;
+                }
+                weightToSource = histoSource[binId];
+              }
+              if(weightToSink != K) {
+                // Get value from histogram
+                int binId = (int)(cube->at(i,j,k)/nbItemsPerBin) - 1;
+                if(binId >= histoSize) {
+                  //printf("binId >= histoSize\n");
+                  binId = histoSize - 1;
+                }
+                if(binId < 0) {
+                  binId = 0;
+                }
+                weightToSink = histoSink[binId];
+              }
+              break;
+            }
+            default:
+                break;
+            }
+
+            if(weightToSource != 0 || weightToSink != 0) {
+                printf("(%d,%d,%d) %ld : %f/%f\n",i,j,k,nodeIdx,weightToSource,weightToSink);
+                m_graph->add_tweights(m_node_ids[nodeIdx],weightToSource,weightToSink);
+            }
         }
 
         // Compute boundary term
@@ -401,6 +424,7 @@ void GraphCut::run_maxflow(Cube* cube,
     }
   }
 
+  printf("[GraphCuts] %d nodes added\n", nNodes);
   printf("[GraphCuts] %d edges added\n", nEdges);
 
   printf("[GraphCuts] Computing max flow\n");

@@ -14,6 +14,16 @@ public:
     virtual ~Brush() {}
 };
 
+class PixelBrush : public Brush
+{
+
+public:
+    PixelBrush();
+    void paint(QImage &data, int x, int y, QColor highlightColor);
+    void paint(Matrix3D<LabelType> &data, int x, int y, int z, LabelType label);
+
+};
+
 class SizedBrush : public Brush
 {
 
