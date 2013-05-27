@@ -5,8 +5,9 @@
 
 SizedBrush::SizedBrush()
 {
-    width = height = 10;
-    depth = 3;
+    this->width = 10;
+    this->height = 10;
+    this->depth = 3;
 }
 
 void SizedBrush::setSize(int width, int height, int depth)
@@ -140,8 +141,10 @@ void SphereBrush::paint(QImage &qimg,
     const qreal cRd = highlightColor.redF() * opacity;
     const qreal cGr = highlightColor.greenF() * opacity;
     const qreal cBl = highlightColor.blueF() * opacity;
-    for(int i = x-width;i<x+width;i++) {
-        for(int j = y-height; j<y+height; j++) {
+    for(int i = x - width;i < x+width; i++)
+    {
+        for(int j = y-height; j < y+height; j++)
+        {
             //TODO maybe skip rows by shifting i=0,j=0...
             if (i < 0 || j < 0)
                 continue;
@@ -149,7 +152,8 @@ void SphereBrush::paint(QImage &qimg,
                 continue;
 
             if ( (i-x)*(i-x)/( (double)(width*width) )
-               + (j-y)*(j-y)/( (double)(height*height) ) <= 1){
+               + (j-y)*(j-y)/( (double)(height*height) ) <= 1)
+            {
                 QColor pixColor = QColor::fromRgb( qimg.pixel(i, j) );
 
                 qreal r = pixColor.redF() * invOpacity + cRd;

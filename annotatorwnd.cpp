@@ -234,7 +234,7 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     ui->chkLabelOverlay->setChecked(true);
 
-    connect( ui->layersDisplay, SIGNAL(currentRowChanged(int)), this, SLOT(selectedOverlayChanged()));
+    connect( ui->layersDisplay, SIGNAL(currentRowChanged(int)), this, SLOT(selectedOverlayChanged(int)));
 
     mOverlayLabelImage = ui->chkLabelOverlay->checkState() == Qt::Checked;
 
@@ -670,9 +670,7 @@ void AnnotatorWnd::scanPlugins( const QString &pluginFolder )
             continue;
         }
 
-    qDebug() << "create plugin " << i << " " << __LINE__<< pluginFolder;
         PluginBase *newPlugin = createPlugin();
-    qDebug() << "Created plugin " << i << " " << __LINE__<< pluginFolder;
         mPluginBaseList.push_back( newPlugin );
 
         mPluginServList.append( PluginServices( newPlugin->pluginName(), this ) );
@@ -685,6 +683,7 @@ void AnnotatorWnd::scanPlugins( const QString &pluginFolder )
             qDebug() << "Initialization failed for " << absFilePath;
             continue;
         }
+
     }
 
 
@@ -1692,7 +1691,7 @@ void AnnotatorWnd::updateImageSlice()
             qreal b = pixColor.blueF() * invOpacity + cBl;
 
             qimg.setPixel( x, y, QColor::fromRgbF( r, g, b ).rgb() );
-        }  
+        }
     }else{ //if mouse point valid
 
         if (ui->brushToolCube->isChecked()){
