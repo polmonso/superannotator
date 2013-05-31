@@ -65,6 +65,7 @@ public:
 
         typename BinaryThresholdImageFilterType::Pointer thresholdFilter
                 = BinaryThresholdImageFilterType::New();
+
         thresholdFilter->SetInput( asItkImage() );
         thresholdFilter->SetLowerThreshold(thrMin);
         thresholdFilter->SetUpperThreshold(thrMax);

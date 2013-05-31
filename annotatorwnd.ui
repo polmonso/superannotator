@@ -42,7 +42,7 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>-461</y>
+          <y>-481</y>
           <width>299</width>
           <height>1358</height>
          </rect>
@@ -209,6 +209,9 @@
             </item>
             <item>
              <widget class="QGroupBox" name="groupBoxRestrictPixLabels_2">
+              <property name="enabled">
+               <bool>true</bool>
+              </property>
               <property name="sizePolicy">
                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                 <horstretch>0</horstretch>
@@ -263,7 +266,7 @@
                   <item>
                    <widget class="QLabel" name="labelPixInfoMore">
                     <property name="sizePolicy">
-                     <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                     <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
                       <horstretch>0</horstretch>
                       <verstretch>0</verstretch>
                      </sizepolicy>
@@ -298,6 +301,12 @@
             </item>
             <item>
              <widget class="QGroupBox" name="groupBox_6">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
               <property name="minimumSize">
                <size>
                 <width>0</width>
@@ -431,6 +440,9 @@
                      <property name="buttonSymbols">
                       <enum>QAbstractSpinBox::NoButtons</enum>
                      </property>
+                     <property name="maximum">
+                      <number>99999</number>
+                     </property>
                      <property name="value">
                       <number>9</number>
                      </property>
@@ -441,6 +453,9 @@
                      <property name="buttonSymbols">
                       <enum>QAbstractSpinBox::NoButtons</enum>
                      </property>
+                     <property name="maximum">
+                      <number>99999</number>
+                     </property>
                      <property name="value">
                       <number>9</number>
                      </property>
@@ -450,6 +465,9 @@
                     <widget class="QSpinBox" name="cubeBrushSizeZ">
                      <property name="buttonSymbols">
                       <enum>QAbstractSpinBox::NoButtons</enum>
+                     </property>
+                     <property name="maximum">
+                      <number>99999</number>
                      </property>
                      <property name="value">
                       <number>3</number>
@@ -739,6 +757,9 @@
                   </property>
                   <item>
                    <widget class="QLabel" name="label_3">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
                     <property name="text">
                      <string>Minimum</string>
                     </property>
@@ -746,6 +767,9 @@
                   </item>
                   <item>
                    <widget class="QSpinBox" name="spinPixMin">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
                     <property name="minimum">
                      <number>1</number>
                     </property>
@@ -763,6 +787,9 @@
                  <layout class="QHBoxLayout" name="horizontalLayout_7">
                   <item>
                    <widget class="QLabel" name="label_4">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
                     <property name="text">
                      <string>Maximum</string>
                     </property>
@@ -770,6 +797,9 @@
                   </item>
                   <item>
                    <widget class="QSpinBox" name="spinPixMax">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
                     <property name="minimum">
                      <number>2</number>
                     </property>
@@ -790,6 +820,9 @@
                  <layout class="QHBoxLayout" name="horizontalLayout_11">
                   <item>
                    <widget class="QCheckBox" name="chkScoreEnable">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
                     <property name="text">
                      <string>Score &gt;=</string>
                     </property>
@@ -797,6 +830,9 @@
                   </item>
                   <item>
                    <widget class="QSpinBox" name="spinScoreThreshold">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                       <horstretch>0</horstretch>
@@ -822,7 +858,7 @@
                      <number>10</number>
                     </property>
                     <property name="value">
-                     <number>128</number>
+                     <number>1</number>
                     </property>
                    </widget>
                   </item>
@@ -830,6 +866,9 @@
                 </item>
                 <item>
                  <widget class="QCheckBox" name="chkDontOverwriteLabeledPIxs">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
                   <property name="text">
                    <string>Don't overwrite labeled pixs</string>
                   </property>
@@ -1060,7 +1099,7 @@
                         <string>Full connect.</string>
                        </property>
                        <property name="checked">
-                        <bool>false</bool>
+                        <bool>true</bool>
                        </property>
                       </widget>
                      </item>

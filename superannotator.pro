@@ -59,7 +59,7 @@ unix {
     QMAKE_LFLAGS += -fvisibility=hidden -Wl,--export-dynamic
 }
 
-QMAKE_CXXFLAGS += -fopenmp
+QMAKE_CXXFLAGS += -fopenmp -O3
 QMAKE_LFLAGS += -fopenmp
 
 # IMPORTANT: user should create this file to specify ITKPATH

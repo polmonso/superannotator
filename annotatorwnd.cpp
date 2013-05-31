@@ -234,6 +234,7 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     ui->chkLabelOverlay->setChecked(true);
 
+    //TODO the row is changed before triggering the slot so this does not work
     connect( ui->layersDisplay, SIGNAL(currentRowChanged(int)), this, SLOT(selectedOverlayChanged(int)));
 
     mOverlayLabelImage = ui->chkLabelOverlay->checkState() == Qt::Checked;
@@ -323,7 +324,7 @@ AnnotatorWnd::AnnotatorWnd(QWidget *parent) :
 
     //TODO this default transparency is hardcoded
     mOverlayInfo[0]->alpha = 0.80;
-    mOverlayInfo[1]->alpha = 0.20;
+    mOverlayInfo[1]->alpha = 0.40;
 
     //TODO assuming there will always be at least one overlay
     ui->layersDisplay->setCurrentRow(0);
@@ -382,18 +383,23 @@ void AnnotatorWnd::selectOverlay()
     QAction *action = qobject_cast<QAction *>(sender());
     int idx = action->data().toInt();
 
-    selectedOverlayChanged(idx);
+    int debugRow = ui->layersDisplay->currentRow();
+    if(ui->layersDisplay->currentRow() != idx){
+        ui->layersDisplay->setCurrentRow(idx);
+        setOverlayVisible(idx, true);
+    }else
+        setOverlayVisible(idx,!mOverlayMenuActions[idx]->isEnabled());
+
+    ui->dialLabelOverlayTransp->setValue(mOverlayInfo[idx]->alpha*100);
+
 
 }
 
 void AnnotatorWnd::selectedOverlayChanged(int idx)
 {
     int debugRow = ui->layersDisplay->currentRow();
-    if(ui->layersDisplay->currentRow() != idx)
-        ui->layersDisplay->setCurrentRow(idx);
-    else
-        setOverlayVisible(idx,!mOverlayMenuActions[idx]->isEnabled());
-
+    ui->layersDisplay->setCurrentRow(idx);
+    setOverlayVisible(idx, true);
     ui->dialLabelOverlayTransp->setValue(mOverlayInfo[idx]->alpha*100);
 
 }
@@ -1124,7 +1130,11 @@ void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )
         // score image or label image?
         PixelType minThr = lbl; PixelType maxThr = lbl;
         if ( ui->chkConnectivityScoreImg->isChecked() ) {
-            minThr = ui->spinScoreThreshold->value();
+            if ( ui->groupBoxRestrictPixLabels->isChecked() ){
+                minThr = ui->spinScoreThreshold->value();
+            } else {
+                minThr = 1;
+            }
             maxThr = 255;
         }
         croppedImg.createLabelMap( minThr, maxThr,
@@ -1132,6 +1142,8 @@ void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )
                                    ui->chkConnectivityDetailedAnalysis->isChecked());
 
         mLabelListData.lblCount = lblCount;
+
+        qDebug() << "Number of connected regions: " << lblCount;
 
         // save the region for which this was computed for offset computation later on
         mLabelListData.region3D = reg;
@@ -1176,8 +1188,10 @@ void AnnotatorWnd::runConnectivityCheck( const Region3D &reg )
 
             Matrix3D<LabelType> *overlayData = getSelectedOverlayData();
             for(int i=0; i < lblCount; i++){
+
                 //TODO fix the labeling color
                 labelRegion( *overlayData, i, i*205/lblCount + 50 );
+
             }
 
         }
@@ -2066,7 +2080,7 @@ QMenu *AnnotatorWnd::getPluginMenuPtr()
 
 AnnotatorWnd::~AnnotatorWnd()
 {
-    delete ui;
+            delete ui;
 }
 
 void AnnotatorWnd::closeEvent(QCloseEvent *evt)
