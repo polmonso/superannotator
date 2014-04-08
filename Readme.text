@@ -1,0 +1,4 @@
+
+checkout thirdparty libraries as well
+ git clone --recursive https://polmonso@bitbucket.org/polmonso/superannotator.git
+
