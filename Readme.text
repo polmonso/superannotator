@@ -26,4 +26,6 @@ There's a video of the process here: https://documents.epfl.ch/groups/c/cv/cvlab
 
 Notice the change of class at the bottom righthand side corner which is performed using the keyboard numbers.
 
+To transfer the overlay 4 to the overlay 2 press Control + T
 
+To Hide/show overlay n use Control + n
